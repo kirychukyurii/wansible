@@ -1,0 +1,34 @@
+---
+all:
+  hosts:
+    node1:
+      ansible_host: 18.130.97.20
+      # ansible_user: admin
+      # ansible_port: 2222
+      # ansible_ssh_pass: "pAssw0rd"
+      # ansible_ssh_private_key_file: /home/webitel/.ssh/rsa.key
+      webitel_services:
+        - consul
+        - rabbitmq
+        - postgresql
+        - postgresql_main
+        - freeswitch
+        - rtpengine
+        - opensips
+        - nginx
+
+    node2:
+      ansible_host: 18.135.102.227
+      # ansible_user: admin
+      # ansible_port: 2222
+      # ansible_ssh_pass: "pAssw0rd"
+      # ansible_ssh_private_key_file: /home/webitel/.ssh/rsa.key
+      webitel_services:
+        - webitel_core
+        - webitel_engine
+        - webitel_call_center
+        - webitel_flow_manager
+        - webitel_messages
+        - webitel_storage
+        - freeswitch
+        - grafana

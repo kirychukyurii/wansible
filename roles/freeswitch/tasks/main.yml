@@ -1,0 +1,12 @@
+---
+- when: inventory_hostname in groups['freeswitch']
+  block:
+    - include: install.yml
+      become: true
+      tags:
+        - freeswitch_install
+
+    - include: configure.yml
+      become: true
+      tags:
+        - freeswitch_configure

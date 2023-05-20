@@ -1,0 +1,9 @@
+---
+- when: "'postgresql_standby' in groups"
+  block:
+    - when: inventory_hostname in (groups['postgresql_standby'] | default([]))
+      block:
+        - include: configure.yml
+          become: true
+          tags:
+            - postgresql_standby_configure

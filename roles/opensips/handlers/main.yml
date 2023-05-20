@@ -1,0 +1,25 @@
+---
+- name: Reload systemd
+  systemd:
+    daemon_reload: true
+  listen: restart systemd
+
+- name: restart logrotate
+  service:
+    name: logrotate
+    state: restarted
+
+- name: restart rsyslog
+  service:
+    name: rsyslog
+    state: restarted
+
+- name: restart opensips
+  service:
+    name: opensips
+    state: restarted
+
+- name: restart fail2ban
+  service:
+    name: fail2ban
+    state: restarted

@@ -1,0 +1,12 @@
+---
+- when: inventory_hostname in groups['webitel_flow_manager']
+  block:
+    - include: install.yml
+      become: true
+      tags:
+        - webitel_flow_manager_install
+
+    - include: configure.yml
+      become: true
+      tags:
+        - webitel_flow_manager_configure

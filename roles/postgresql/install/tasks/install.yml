@@ -1,0 +1,22 @@
+---
+- name: Install PostgreSQL 14 and timescaledb packages
+  apt:
+    name:
+      - postgresql-14
+      - webitel-postgresql-14
+      - timescaledb-2-postgresql-14
+    update_cache: no
+  when: inventory_hostname in groups['postgresql']
+
+- name: Execute timescaledb-tune
+  shell: timescaledb-tune --quiet --yes
+  when: inventory_hostname in groups['postgresql_main']
+
+- name: Enable PostgreSQL at startup (systemd)
+  systemd:
+    name: postgresql
+    enabled: yes
+    daemon_reload: true
+    state: restarted
+  when:
+    - ansible_service_mgr == "systemd"

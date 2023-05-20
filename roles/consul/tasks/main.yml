@@ -1,0 +1,12 @@
+---
+- when: inventory_hostname in groups['consul']
+  block:
+    - include: install.yml
+      become: true
+      tags:
+        - consul_install
+
+    - include: configure.yml
+      become: true
+      tags:
+        - consul_configure

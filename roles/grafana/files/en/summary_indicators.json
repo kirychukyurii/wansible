@@ -1,0 +1,414 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_POSTGRESQL",
+      "label": "PostgreSQL",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "postgres",
+      "pluginName": "PostgreSQL"
+    },
+    {
+      "name": "VAR_DOMAIN_ID",
+      "type": "constant",
+      "label": "domain_id",
+      "value": "1",
+      "description": ""
+    }
+  ],
+  "__elements": [],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "9.0.2"
+    },
+    {
+      "type": "datasource",
+      "id": "postgres",
+      "name": "PostgreSQL",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "iteration": 1661174792504,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "IVR"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 57
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Queue"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 95
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Missed"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 112
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SL 20"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 645
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "SL 20"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "lcd-gauge"
+              },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Avg queue time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 206
+              },
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "noValue",
+                "value": "-"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Avg talk time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 188
+              },
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "noValue",
+                "value": "-"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Avg hold time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 192
+              },
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "noValue",
+                "value": "-"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Time"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 110
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Quantity of answered calls in 20s"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 208
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Average processing time (sec)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 227
+              },
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "noValue",
+                "value": "-"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 22,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "9.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "with x as (\n    select x, x + $intr_group::interval - interval '1 sec' x2, $domain_id::int8 domain_id\n    from generate_series(($__timeFrom()::timestamptz)::date, ($__timeTo()::timestamptz)::date, $intr_group::interval) x\n)\nselect  to_char(x.x::date, 'DD/MM/YYYY') as \"Time\",\n  t.ivr \"IVR\",\n  t.queue \"Queue\",\n  t.abandoned \"Missed\",\n  t.sl20_cnt \"Quantity of answered calls in 20s\",\n  t.avg_work \"Average processing time (sec)\",\n  t.avg_queue_wait \"Avg queue time\",\n  t.avg_queue_talk \"Avg talk time\",\n  t.avg_hold \"Avg hold time\",\n  t.sl20 \"SL 20\"\nfrom x\n    left join lateral (\n        select count(ch.*) filter ( where ch.direction = 'inbound' and ch.queue_id isnull ) ivr,\n           count(ch.*) filter ( where ch.direction = 'inbound' and ch.queue_id notnull ) queue,\n           count(ch.*) filter ( where ch.direction = 'inbound' and ch.queue_id notnull and ch.bridged_at notnull ) abandoned,\n           (count(*) filter ( where t.bridged_at - t.joined_at < interval '20 sec')::decimal) sl20_cnt,\n           case when count(*)::decimal > 0 then\n            (((count(*) filter ( where t.bridged_at - t.joined_at < interval '20 sec')::decimal) / count(*)::decimal) * 100)\n           else 0::decimal end as sl20,\n           (count(*) filter ( where t.bridged_at - t.joined_at < interval '30 sec')::decimal) sl30_cnt,\n           case when count(*)::decimal > 0 then\n            (((count(*) filter ( where t.bridged_at - t.joined_at < interval '30 sec')::decimal) / count(*)::decimal) * 100)\n           else 0::decimal end as sl30,\n           avg(extract(epoch from coalesce(t.reporting_at, t.leaving_at) - t.bridged_at)) filter ( where t.bridged_at notnull ) avg_work,\n           avg(extract(epoch from coalesce(t.bridged_at, t.leaving_at) - t.joined_at)) filter ( where t.leaving_at notnull ) avg_queue_wait,\n           avg(extract(epoch from t.leaving_at - t.bridged_at)) filter ( where t.bridged_at notnull ) avg_queue_talk,\n           avg(ah.hold_sec) filter ( where ah.hold_sec > 0 ) avg_hold,\n           avg(extract(epoch from t.reporting_at - t.leaving_at )) filter ( where t.reporting_at notnull ) avg_reporting,\n           sum(extract(epoch from t.reporting_at - t.leaving_at )) filter ( where t.reporting_at notnull ) sum_reporting\n\n    from call_center.cc_calls_history ch\n        left join call_center.cc_member_attempt_history t on (t.member_call_id = ch.id and t.domain_id = ch.domain_id)\n        left join call_center.cc_calls_history ah on ah.id = t.agent_call_id and ah.domain_id = t.domain_id\n    where ch.domain_id = x.domain_id\n        and ch.created_at between x.x and x.x2\n        and ch.parent_id isnull\n        and ch.direction = 'inbound'\n    ) t on true\nwhere ( $sl isnull or (t.sl20 < $sl or t.sl30 < $sl))  \norder by x",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": [
+    "dash"
+  ],
+  "templating": {
+    "list": [
+      {
+        "hide": 2,
+        "name": "domain_id",
+        "query": "${VAR_DOMAIN_ID}",
+        "skipUrlSync": false,
+        "type": "constant",
+        "current": {
+          "value": "${VAR_DOMAIN_ID}",
+          "text": "${VAR_DOMAIN_ID}",
+          "selected": false
+        },
+        "options": [
+          {
+            "value": "${VAR_DOMAIN_ID}",
+            "text": "${VAR_DOMAIN_ID}",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "allValue": "null",
+        "current": {},
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_POSTGRESQL}"
+        },
+        "definition": "select 'Day' as __text, '1 day'::text __value\nunion all\nselect '7 days', '7 day' \nunion all\nselect 'Month', '1 month' \nunion all\nselect 'Year' , '1 year' ",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Grouping",
+        "multi": false,
+        "name": "intr_group",
+        "options": [],
+        "query": "select 'Day' as __text, '1 day'::text __value\nunion all\nselect '7 days', '7 day' \nunion all\nselect 'Month', '1 month' \nunion all\nselect 'Year' , '1 year' ",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_POSTGRESQL}"
+        },
+        "definition": "select null __value, 'All' __text\nunion all\nselect 80 __value, '80' __text\nunion all\nselect 70, '70'\nunion all\nselect 50, '50'\nunion all\nselect 30, '30'",
+        "hide": 0,
+        "includeAll": false,
+        "label": "SL < ",
+        "multi": false,
+        "name": "sl",
+        "options": [],
+        "query": "select null __value, 'All' __text\nunion all\nselect 80 __value, '80' __text\nunion all\nselect 70, '70'\nunion all\nselect 50, '50'\nunion all\nselect 30, '30'",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Summary indicators",
+  "uid": "yBUW8c7nk",
+  "version": 1,
+  "weekStart": ""
+}

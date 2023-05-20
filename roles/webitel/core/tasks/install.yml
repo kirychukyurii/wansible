@@ -1,0 +1,8 @@
+---
+- name: Install webitel_core
+  apt:
+    name:
+      - webitel-core
+    state: latest
+    update_cache: no
+    install_recommends: no

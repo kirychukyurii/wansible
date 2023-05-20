@@ -1,0 +1,431 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_POSTGRESQL",
+      "label": "PostgreSQL",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "postgres",
+      "pluginName": "PostgreSQL"
+    }
+  ],
+  "__elements": [],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "9.0.2"
+    },
+    {
+      "type": "datasource",
+      "id": "postgres",
+      "name": "PostgreSQL",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "connect_rate"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true
+      },
+      "pluginVersion": "9.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select\n    q.name \"Queue\",\n    b.name \"Bucket\",\n    count(*) \"All count\",\n    count(*) filter ( where h.bridged_at notnull ) \"Bridged agent calls\",\n    count(*) filter ( where ch.answered_at  notnull and (ch.amd_result = 'HUMAN' or ch.amd_result isnull ) ) \"Human calls\",\n    count(*) filter ( where ch.answered_at  notnull and h.bridged_at isnull and (ch.amd_result = 'HUMAN' or ch.amd_result isnull ) ) \"Silence calls\",\n    case when count(*) filter ( where ch.answered_at  notnull and h.bridged_at isnull and (ch.amd_result = 'HUMAN' or ch.amd_result isnull ) ) > 1\n    then ((count(*) filter ( where ch.answered_at  notnull and h.bridged_at isnull and (ch.amd_result = 'HUMAN' or ch.amd_result isnull ) ))::double precision * 100) / count(*)::double precision\n    else 0 end as \"Silence calls/ All calls\",\n    \n    (count(*) filter ( where ch.answered_at  notnull and h.bridged_at isnull and (ch.amd_result = 'HUMAN' or ch.amd_result isnull ) )::double precision / count(*) filter ( where ch.answered_at  notnull and (ch.amd_result = 'HUMAN' or ch.amd_result isnull ) ) ) * 100 \"Silence call rate\",\n    \n    GREATEST(\n               CASE\n                   WHEN count(*) FILTER (WHERE h.bridged_at IS NOT NULL) > 0 THEN ( (count(*) FILTER (WHERE ch.answered_at notnull and (ch.amd_result = 'HUMAN' or ch.amd_result isnull ))::double precision * 100)) /\n                                                                                     count(*)\n                   ELSE 1::double precision\n                   END, 1::double precision)                                          AS connect_rate\nfrom call_center.cc_member_attempt_history h\n    inner join call_center.cc_queue q on q.id = h.queue_id\n    inner join call_center.cc_calls_history ch on ch.id = h.member_call_id and ch.domain_id = h.domain_id\n    left join call_center.cc_bucket b on b.id = h.bucket_id\nwhere h.domain_id = 1\n  and h.joined_at  between $__timeFrom()::timestamptz and $__timeTo()::timestamptz\n  --and ch.answered_at notnull\n  and h.queue_id in (select id from call_center.cc_queue q where q.type = 5)\ngroup by 1, 2;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Predictive queue",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "state"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 85
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Calls"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 88
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 8,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Оператор"
+          }
+        ]
+      },
+      "pluginVersion": "9.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "with ds as  (\n    SELECT att.queue_id,\n           att.bucket_id,\n           att.agent_id,\n           min(att.joined_at)                                                                     AS start_stat,\n           max(att.joined_at)                                                                     AS stop_stat,\n           count(*)                                                                               AS call_attempts,\n           COALESCE(avg(date_part('epoch'::text, COALESCE(att.reporting_at, att.leaving_at) - att.offering_at))\n                    FILTER (WHERE att.bridged_at IS NOT NULL),\n                    0::double precision)                                                          AS avg_handle,\n           COALESCE(avg(date_part('epoch'::text, ch.answered_at - att.joined_at))\n                    FILTER (WHERE ch.answered_at IS NOT NULL),\n                    0::double precision)                                                          AS avg_member_answer,\n           COALESCE(avg(date_part('epoch'::text, ch.answered_at - att.joined_at))\n                    FILTER (WHERE ch.answered_at IS NOT NULL AND ch.bridged_at IS NULL),\n                    0::double precision)                                                          AS avg_member_answer_not_bridged,\n           COALESCE(avg(date_part('epoch'::text, ch.answered_at - att.joined_at))\n                    FILTER (WHERE ch.answered_at IS NOT NULL AND ch.bridged_at IS NOT NULL),\n                    0::double precision)                                                          AS avg_member_answer_bridged,\n           COALESCE(max(date_part('epoch'::text, ch.answered_at - att.joined_at))\n                    FILTER (WHERE ch.answered_at IS NOT NULL),\n                    0::double precision)                                                          AS max_member_answer,\n           count(*) FILTER (WHERE ch.answered_at IS NOT NULL AND\n                                  (ch.amd_result::text = 'HUMAN'::text OR ch.amd_result IS NULL)) AS connected_calls,\n           count(*) FILTER (WHERE att.bridged_at IS NOT NULL)                                     AS bridged_calls,\n\n           count(*) FILTER (WHERE ch.answered_at IS NOT NULL AND att.bridged_at IS NULL AND\n                                  (ch.amd_result::text = 'HUMAN'::text OR ch.amd_result IS NULL)) AS abandoned_calls,\n\n           COALESCE((count(*) FILTER (WHERE ch.answered_at IS NOT NULL AND att.bridged_at IS NULL AND\n                                        (ch.amd_result::text = 'HUMAN'::text OR ch.amd_result IS NULL))::double precision -\n                 COALESCE((q.payload -> 'abandon_rate_adjustment'::text)::integer, 0)::double precision) / NULLIF(\n                                count(*) FILTER (WHERE ch.answered_at IS NOT NULL AND\n                                                       (ch.amd_result::text = 'HUMAN'::text OR ch.amd_result IS NULL)),\n                                0)::double precision * 100::double precision,\n                0::double precision)                                                                                AS abandoned_rate,\n\n           count(*) FILTER (WHERE ch.answered_at IS NOT NULL AND\n                                  (ch.amd_result::text = 'HUMAN'::text OR ch.amd_result IS NULL))::double precision /\n           count(*)::double precision                                                             AS connection_rate,\n\n           CASE\n           WHEN (count(*) FILTER (WHERE ch.answered_at IS NOT NULL AND\n                                        (ch.amd_result::text = 'HUMAN'::text OR ch.amd_result IS NULL))::double precision /\n                 count(*)::double precision) > 0::double precision THEN 1::double precision / (count(*) FILTER (WHERE\n                   ch.answered_at IS NOT NULL AND\n                   (ch.amd_result::text = 'HUMAN'::text OR ch.amd_result IS NULL))::double precision /\n                                                                                               count(*)::double precision) -\n                                                                        1::double precision\n           ELSE ((count(*) / greatest(count(DISTINCT att.agent_id), 1)) - 1) ::double precision\n           END                                                                                                   AS over_dial,\n           count(*) FILTER (WHERE ch.answered_at IS NOT NULL AND\n                                  (ch.amd_result::text = 'HUMAN'::text OR ch.amd_result IS NULL))::double precision /\n           count(*)::double precision                                                             AS hit_rate,\n           count(DISTINCT att.agent_id)                                                           AS agents,\n           array_agg(DISTINCT att.agent_id)\n           FILTER (WHERE att.agent_id IS NOT NULL)                                                AS aggent_ids\n    FROM call_center.cc_member_attempt_history att\n             left join call_center.cc_queue q on q.id = att.queue_id\n             LEFT JOIN call_center.cc_calls_history ch\n                       ON ch.domain_id = att.domain_id AND ch.id::text = att.member_call_id::text\n    WHERE  att.joined_at > (now() - '01:00:00'::interval)\n   AND (att.queue_id IN (SELECT q.id\n                        FROM call_center.cc_queue q\n                         WHERE q.type = 5))\n    GROUP BY att.queue_id, att.bucket_id, q.id, att.agent_id\n),\n     q as (\n         select q.id,\n                q.name,\n                coalesce((q.payload -> 'min_attempts')::int, 5)   min_attempts,\n                coalesce((q.payload -> 'max_agent_lose')::int, 1) max_agent_lose,\n                coalesce((q.payload -> 'max_agent_line')::int, 5) max_agent_line,\n                coalesce((q.payload->'max_abandoned_rate')::int, 3.0) max_abandoned_rate,\n                coalesce(t.wrap_up_time, 15) wrap_up_time\n         from call_center.cc_queue q\n            left join call_center.cc_team t on t.id = q.team_id\n         where q.id in (select queue_id from ds)\n     )\n, t as (\n    select *\nfrom ds\n    inner join q on q.id = ds.queue_id\n    left join lateral (\n        select count(*) cnt,\n               count(*) filter ( where att.state in ('idle', 'offering', 'active', 'wait_agent') ) offr,\n               count(*) FILTER ( WHERE (\n                   att.bridged_at notnull\n                   and ds.call_attempts >= coalesce((q.min_attempts)::int, 5)\n                   and extract(epoch from now() - att.offering_at) > q.wrap_up_time + ds.avg_handle + ds.avg_member_answer\n                   ) ) predict_agent\n        from call_center.cc_member_attempt att\n        where att.agent_id = ds.agent_id and state != 'leaving'\n) agg on true\n)\nselect\n    u.\"user\"->>'name' Agent,\n    cac.state,\n    t.call_attempts \"Calls\",\n    case when t.call_attempts > t.min_attempts and coalesce(t.abandoned_rate, 0) < t.max_abandoned_rate and cac.lose_attempt < t.max_agent_lose\n            and (cac.channel isnull or t.predict_agent > 0 or (cac.state = 'wrap_time' and cac.timeout - (round(t.avg_member_answer) || ' sec')::interval < now() ))\n        then 'Predict'\n        when cac.state = 'bridged' then ''\n        else 'Progressive' end \"Mode\",\n    t.cnt \"Active Calls\",\n    cac.lose_attempt ,\n    t.avg_handle,\n    t.avg_member_answer,\n    t.connected_calls,\n    t.bridged_calls,\n    t.abandoned_calls,\n    case when abandoned_rate < 0 then 0 else abandoned_rate end as \"abandoned_rate %\",\n    LEAST(round(greatest(t.over_dial, 1)), t.max_agent_line) predict_agent_call\n\nfrom t\n    left join call_center.cc_agent_channel cac on cac.agent_id = t.agent_id\n    left join call_center.cc_agent_with_user u on u.id = t.agent_id",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Last 1 hour",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "talk"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "wrap_time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "missed"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "avg_waiting"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "occupancy"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "id": 6,
+      "options": {
+        "showHeader": true
+      },
+      "pluginVersion": "8.2.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "with x as materialized (\n    select min(joined_at) start_at, max(joined_at) stop_at, array_agg(distinct queue_id) queue_ids, array_agg(distinct agent_id) filter ( where agent_id notnull ) agent_ids\n    from call_center.cc_member_attempt_history\n    where joined_at  between $__timeFrom()::timestamptz and $__timeTo()::timestamptz and queue_id in (select id from call_center.cc_queue q where q.type = 5)\n),\ndata as (\n    select u.\"user\"->>'name' as name,\n       count(*) filter ( where state = 'bridged' ) handle_calls,\n       sum( extract(epoch from duration) ) filter ( where ah.state = 'bridged' ) talk,\n       round(sum(extract(epoch from duration)) filter ( where ah.state = 'wrap_time' ))  wrap_time,\n       round(sum(extract(epoch from duration)) filter ( where ah.state = 'missed' ))  missed,\n       avg(extract(epoch from duration)) filter ( where ah.state = 'waiting' ) as avg_waiting,\n       sum(extract(epoch from duration)) filter ( where ah.state = 'waiting' ) as sum_waiting,\n       sum(extract(epoch from duration)) filter ( where ah.state = 'offering' ) as sum_offering\n    from call_center.cc_agent_state_history ah\n        cross join x\n        inner join call_center.cc_agent_with_user u on u.id = ah.agent_id\n    where ah.joined_at between x.start_at and x.stop_at\n        and agent_id = any(x.agent_ids)\n        and (ah.channel isnull or ah.queue_id = any(x.queue_ids))\n    group by 1\n)\nselect\n    data.name,\n    data.handle_calls,\n    data.talk,\n    data.wrap_time,\n    data.missed,\n    data.avg_waiting,\n    ((data.sum_offering + data.wrap_time + data.missed + data.talk) * 100) / data.sum_waiting as occupancy\nfrom data\norder by 1;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Agents",
+      "type": "table"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now/d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Predictive",
+  "uid": "RwF5gNSnz",
+  "version": 1,
+  "weekStart": ""
+}

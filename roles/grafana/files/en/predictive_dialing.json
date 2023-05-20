@@ -1,0 +1,1068 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_POSTGRESQL",
+      "label": "PostgreSQL",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "postgres",
+      "pluginName": "PostgreSQL"
+    },
+    {
+      "name": "VAR_DOMAIN_ID",
+      "type": "constant",
+      "label": "domain_id",
+      "value": "1",
+      "description": ""
+    }
+  ],
+  "__elements": [],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "9.0.2"
+    },
+    {
+      "type": "panel",
+      "id": "piechart",
+      "name": "Pie chart",
+      "version": ""
+    },
+    {
+      "type": "datasource",
+      "id": "postgres",
+      "name": "PostgreSQL",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "timeseries",
+      "name": "Time series",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "iteration": 1661174776747,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-red",
+                "value": null
+              },
+              {
+                "color": "dark-orange",
+                "value": 60
+              },
+              {
+                "color": "dark-green",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Progress"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "lcd-gauge"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "In work"
+            },
+            "properties": [
+              {
+                "id": "custom.width"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Waiting"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 103
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Queue"
+            },
+            "properties": [
+              {
+                "id": "custom.align",
+                "value": "left"
+              },
+              {
+                "id": "custom.width",
+                "value": 162
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Ожидает"
+          }
+        ]
+      },
+      "pluginVersion": "9.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select s.\"Queue\",\n       s.\"In work\",\n       s.\"Waiting\",\n       x.abandoned_calls \"Missed\",\n       s.\"Total\",\n       s.\"Progress\",\n       s.\"Answered in an hour\",\n       s.\"Connection in an hour\",\n       s.\"Missed in an hour\",\n       s.\"Avg response time\",\n       s.\"Calculation\"\nfrom (\n    select q.name \"Queue\",\n           q.id,\n           a.cnt \"In work\",\n           coalesce(sum(qs.member_waiting), 0) \"Waiting\",\n           coalesce(sum(qs.member_count), 0) as \"Total\",\n           case when coalesce(sum(qs.member_count - qs.member_waiting)) > 0\n               then  (coalesce(sum(qs.member_count - qs.member_waiting), 0)::double precision / coalesce(sum(qs.member_count), 0)::double precision) * 100\n               else 100.0 end \"Progress\",\n               x.connected_calls \"Answered in an hour\",\n               x.bridged_calls \"Connection in an hour\",\n               x.abandoned_calls \"Missed in an hour\",\n              x.avg_member_answer \"Avg response time\",\n              x.over_dial \"Calculation\"\n    from call_center.cc_queue q\n        left join call_center.cc_queue_statistics qs on qs.queue_id = q.id\n        left join call_center.cc_bucket b on b.id = qs.bucket_id\n        left join lateral (\n            select count(*) cnt\n            from call_center.cc_member_attempt a\n            where a.queue_id = q.id and a.state != 'leaving'\n        ) a on true\n        left join lateral (\n          select sum(call_attempts) call_attempts,\n             avg(avg_member_answer) avg_member_answer,\n             sum(connected_calls) connected_calls,\n             sum(bridged_calls) bridged_calls,\n             sum(abandoned_calls) abandoned_calls,\n             avg(over_dial) over_dial,\n             avg(connection_rate) connection_rate\n      from call_center.cc_distribute_stats s\n      where s.queue_id = q.id\n        ) x on true\n    where q.domain_id = $domain_id and q.id in ($q)\n    group by 1,2, 3, q.priority, x.call_attempts,\n               x.avg_member_answer,\n               x.connected_calls,\n               x.bridged_calls,\n               x.abandoned_calls,\n               x.over_dial,\n               x.connection_rate\n    order by q.priority desc\n) s\n    left join lateral  (\n        select\n         count(*) FILTER (WHERE ch.answered_at IS NOT NULL AND att.bridged_at IS NULL AND\n                            (ch.amd_result::text = 'HUMAN'::text OR ch.amd_result IS NULL)) AS abandoned_calls\n      from call_center.cc_member_attempt_history att\n         join  call_center.cc_calls_history ch ON ch.domain_id = att.domain_id AND ch.id::text = att.member_call_id::text\n      where\n          att.domain_id = $domain_id\n          and att.queue_id = s.id\n          and att.joined_at between $__timeFrom()::timestamptz and $__timeTo()::timestamptz \n) x on true",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Information",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Нагрузка"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "lcd-gauge"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "AHT"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Agent's ASA"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.width",
+                "value": 331
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Member's ASA"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              },
+              {
+                "id": "custom.width",
+                "value": 299
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Agent"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 290
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Обработано"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 121
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Успешно обработано"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 179
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Абонент ответил"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 178
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Abandoned"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 112
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Connected with agent"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 229
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "State"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 99
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 2
+                    },
+                    {
+                      "color": "#EAB839",
+                      "value": 3
+                    },
+                    {
+                      "color": "#27303100",
+                      "value": 4
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Завершенные (Успешно)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 191
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Завершенные (Неуспешно)"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 199
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "id": 4,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "9.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select\n    u.\"user\"->>'name' \"Agent\",\n    case a.status \n      when 'online'  then 1\n      when 'offline'  then 2\n      when 'pause'  then 3\n      else 4 end\n    as \"Status\",\n    case when a.status = 'online' then ch.state else '' end \"State\",\n    --st.queue \"В очереди\",\n    --st.cnt \"Завершенные (Успешно)\",\n    --st.abandoned \"Завершенные (Неуспешно)\",\n    --t.notbr_cnt \"Абонент не ответил\",\n    --t.member_answer \"Абонент ответил\",\n    t.br_cnt \"Connected with agent\",\n    --t.br_cnt - t.member_answer \"Пропущенно\",\n    --t.missed \"Пропущено\",\n    t.aht \"AHT\",\n    t.asa \"Agent's ASA\",\n    t.asa_m \"Member's ASA\"\n    --case when sum(st.queue) over () > 0 \n    -- then (st.queue * 100) / sum(st.queue) over () \n    -- else 0 end \"Нагрузка\"\nfrom (\n         select a.agent_id,\n                count(*) filter ( where a.bridged_at notnull )                                                  br_cnt,\n                count(*) filter ( where a.bridged_at isnull )                                                   notbr_cnt,\n                count(*) filter ( where mc.answered_at notnull and (mc.amd_result::text = 'HUMAN'::text OR mc.amd_result::text = 'NOTSURE'::text or mc.amd_result IS NULL) ) member_answer,\n                avg(extract(epoch from (coalesce(a.reporting_at, a.leaving_at) - a.bridged_at)))\n                filter ( where a.bridged_at notnull )                                                           aht,\n                count(*) filter ( where ac.id notnull and ac.bridged_at isnull )                               missed,\n                avg(extract(epoch from ac.answered_at - ac.created_at)) filter ( where ac.answered_at notnull ) asa,\n                avg(extract(epoch from mc.answered_at - mc.created_at)) filter ( where mc.answered_at notnull ) asa_m\n         from call_center.cc_member_attempt_history a\n                  left join call_center.cc_calls_history ac on ac.domain_id = $domain_id and ac.id = a.agent_call_id\n                  left join call_center.cc_calls_history mc on mc.domain_id = $domain_id and mc.id = a.member_call_id\n         where a.domain_id = $domain_id\n           and a.joined_at between $__timeFrom()::timestamptz and $__timeTo()::timestamptz \n           and a.queue_id in ($q)\n         group by 1\n     ) t\n         left join lateral (\n        select\n            count(*)  filter (where m.stop_at isnull) queue,\n            count(*)  filter (where m.stop_at notnull and m.stop_cause = 'success') cnt,\n            count(*)  filter (where m.stop_at notnull and not m.stop_cause = 'success') abandoned\n            \n        from call_center.cc_member m\n        where m.agent_id = t.agent_id and m.created_at between $__timeFrom()::timestamptz and $__timeTo()::timestamptz \n    ) st on true\n    inner join call_center.cc_agent_with_user u on u.id = t.agent_id\n    left join call_center.cc_agent a on a.id = t.agent_id\n    left join call_center.cc_agent_channel ch on ch.agent_id = a.id",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Agents",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto",
+            "filterable": true
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Agent in a call"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Duration"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "s"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 24,
+        "x": 0,
+        "y": 16
+      },
+      "id": 10,
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Ответил"
+          }
+        ]
+      },
+      "pluginVersion": "8.2.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select a.joined_at \"Time\",\n       a.destination->>'destination' as \"Number\",\n       a.state \"State\",\n       c.answered_at \"Answered\",\n       u.\"user\"->>'name' \"Agent\",\n       case when a.bridged_at notnull\n            then extract(epoch from coalesce(a.leaving_at, now()) - a.bridged_at)::int8\n            else 0 end \"Agent in a call\",\n       extract(epoch from now() - a.joined_at)::int8 \"Duration\",\n       r.name \"Resource\"\nfrom call_center.cc_member_attempt a\n    left join call_center.cc_outbound_resource r  on r.id = a.resource_id\n    left join call_center.cc_calls c on c.id = a.member_call_id\n    left join call_center.cc_agent_with_user u on u.id = a.agent_id\nwhere a.state != 'leaving' and a.queue_id in ($q)\norder by a.answered_at desc nulls last ;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Active calls",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "table",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select\n    public.time_bucket('$__interval', a.joined_at::timestamptz) as time,\n    q.name as metric,\n    count(*) as value\nfrom call_center.cc_member_attempt_history a\n    left join call_center.cc_queue q on q.id = a.queue_id\nwhere a.domain_id = $domain_id\n    and a.joined_at between $__timeFrom()::timestamptz and $__timeTo()::timestamptz \n    and a.queue_id in($q)\ngroup by 1, 2\norder by 1, 2;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Queue calls",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 13,
+        "x": 0,
+        "y": 31
+      },
+      "id": 12,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "percent",
+            "value"
+          ]
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select\n    t.result,\n    count(*),\n    now() as time\nfrom (\n    select distinct on(h.member_id)\n        h.member_id,\n        h.result\n    from call_center.cc_member_attempt_history h\n    where h.domain_id = $domain_id\n        and h.joined_at between $__timeFrom()::timestamptz and $__timeTo()::timestamptz\n        and h.queue_id in ($q)\n        and h.member_id notnull\n    order by h.member_id,\n             h.joined_at desc\n) t\ngroup by 1",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Hangup causes by members",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "auto",
+            "displayMode": "auto"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green"
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 11,
+        "x": 13,
+        "y": 31
+      },
+      "id": 14,
+      "options": {
+        "showHeader": true
+      },
+      "pluginVersion": "8.2.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select seq as \"Attempt\",\n       count(*) as \"Quantity\",\n       count(*) filter ( where t.seq =  t.m and t.stop_cause = 'success' ) \"Successful\"\nfrom (\n     select\n            m.seq,\n            m.member_id,\n            mm.stop_cause,\n            max(m.seq) over (partition by m.member_id) m\n    from call_center.cc_member_attempt_history m\n        left join call_center.cc_member mm on mm.id = m.member_id\n    where ( m.joined_at between $__timeFrom()::timestamptz and $__timeTo()::timestamptz\n            and m.domain_id = $domain_id\n        )\n        and m.domain_id = $domain_id\n        and m.queue_id in ($q)\n        and m.member_id notnull\n) t\ngroup by 1\n;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Member attempts",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 13,
+        "x": 0,
+        "y": 40
+      },
+      "id": 16,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "percent",
+            "value"
+          ]
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select now() as time, t.value, t.metric\nfrom (\n         select count(*) as metric, ch.cause || ' (' || ch.sip_code || ')' as value\n         from call_center.cc_member_attempt_history a\n                  inner join call_center.cc_calls_history ch on ch.id = a.member_call_id\n         where a.domain_id = $domain_id\n           and a.joined_at between $__timeFrom()::timestamptz\n           and $__timeTo()::timestamptz\n           and a.queue_id in ($q)\n         group by 2\n     ) t\n     where t.metric notnull;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Hangup Causes by Attempts",
+      "type": "piechart"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": [
+    "dash"
+  ],
+  "templating": {
+    "list": [
+      {
+        "hide": 2,
+        "name": "domain_id",
+        "query": "${VAR_DOMAIN_ID}",
+        "skipUrlSync": false,
+        "type": "constant",
+        "current": {
+          "value": "${VAR_DOMAIN_ID}",
+          "text": "${VAR_DOMAIN_ID}",
+          "selected": false
+        },
+        "options": [
+          {
+            "value": "${VAR_DOMAIN_ID}",
+            "text": "${VAR_DOMAIN_ID}",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "current": {},
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_POSTGRESQL}"
+        },
+        "definition": "select name __text, id __value\nfrom call_center.cc_queue q\nwhere q.domain_id = $domain_id and q.type = 5",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Queues",
+        "multi": true,
+        "name": "q",
+        "options": [],
+        "query": "select name __text, id __value\nfrom call_center.cc_queue q\nwhere q.domain_id = $domain_id and q.type = 5",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now/d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Predictive dialing",
+  "uid": "SD9XTh7np",
+  "version": 1,
+  "weekStart": ""
+}

@@ -1,0 +1,6 @@
+---
+- name : Install Let's Encrypt package
+  apt:
+    name: python3-certbot-nginx
+    update_cache: no
+    state: latest

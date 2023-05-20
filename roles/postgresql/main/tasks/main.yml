@@ -1,0 +1,17 @@
+---
+- when: inventory_hostname in groups['postgresql_main']
+  block:
+    - include: configure.yml
+      become: true
+      tags:
+        - postgresql_configure
+
+    - include: databases.yml
+      become: true
+      tags:
+        - postgresql_databases
+
+    - include: cron.yml
+      become: true
+      tags:
+        - postgresql_cron

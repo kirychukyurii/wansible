@@ -1,0 +1,8 @@
+---
+- name: Install webitel_flow_manager
+  apt:
+    name:
+      - webitel-flow-manager
+    state: latest
+    update_cache: no
+    install_recommends: no

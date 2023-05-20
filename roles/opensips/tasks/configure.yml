@@ -1,0 +1,56 @@
+---
+- name: Read bootstrapped state
+  stat:
+    path: /etc/opensips/.bootstrap
+  register: bootstrap_state
+  ignore_errors: true
+  tags: always
+
+- when: not bootstrap_state.stat.exists
+  block:
+    - name: Download OpenSIPS config
+      get_url:
+        url: https://git.webitel.com/projects/WEP/repos/opensips/raw/opensips.cfg
+        dest: /etc/opensips/opensips.cfg
+
+    - when: groups['all'] | length > 1
+      block:
+        - name: Change OpenSIPs MI IP
+          replace:
+            path: '/etc/opensips/opensips.cfg'
+            regexp: '(^.*\"httpd\".*)(\s\"127\.0\.0\.1\")(.*$)'
+            replace: '\1 "{{ hostvars[inventory_hostname]["ansible_default_ipv4"]["address"] }}"\3'
+
+        - name: Change PostgreSQL IP
+          replace:
+            path: '/etc/opensips/opensips.cfg'
+            after: 'postgres://opensips:webitel@'
+            before: ':5432'
+            regexp: '^(.+)$'
+            replace: "{{ hostvars[groups[ 'postgresql_main' ][0]]['ansible_default_ipv4']['address'] }}"
+
+        - name: Change rtpengine IP
+          replace:
+            path: '/etc/opensips/opensips.cfg'
+            regexp: '(^.*)(\s"udp:127.0.0.1:60000")(.*$)'
+            replace: '\1 "udp:{{ hostvars[groups[ "rtpengine" ][0]]["ansible_default_ipv4"]["address"] }}:60000"\3'
+
+        - name: Change RabbitMQ IP
+          replace:
+            path: '/etc/opensips/opensips.cfg'
+            regexp: '(^.*)(\s"rabbitmq:webitel:webitel@localhost)(.*$)'
+            replace: '\1 "rabbitmq:webitel:webitel@{{ hostvars[groups[ "rabbitmq" ][0]]["ansible_default_ipv4"]["address"] }}\3'
+
+    - name: Enable opensips at startup (systemd)
+      systemd:
+        name: "opensips.service"
+        enabled: yes
+        daemon_reload: yes
+        state: restarted
+      when:
+        - ansible_service_mgr == "systemd"
+
+    - name: Create bootstrapped state file
+      file:
+        dest: /etc/opensips/.bootstrap
+        state: touch

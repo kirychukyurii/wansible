@@ -1,0 +1,8 @@
+---
+- name: Install grafana packages
+  apt:
+    name:
+      - grafana
+    state: latest
+    install_recommends: no
+    update_cache: no

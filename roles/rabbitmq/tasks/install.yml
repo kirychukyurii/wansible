@@ -1,0 +1,9 @@
+---
+- name: Install rabbitmq-server package
+  apt:
+    name: rabbitmq-server
+    update_cache: no
+
+- name: Get rabbitmq version
+  command: rabbitmqctl version
+  register: rabbitmq_version

@@ -1,0 +1,12 @@
+---
+- when: inventory_hostname in groups['webitel_messages']
+  block:
+    - include: install.yml
+      become: true
+      tags:
+        - webitel_messages_install
+
+    - include: configure.yml
+      become: true
+      tags:
+        - webitel_messages_configure

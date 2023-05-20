@@ -1,0 +1,14 @@
+---
+- name: Get kernel version
+  shell: uname -r
+  register: kernel_version
+
+- name: Install rtpengine packages
+  apt:
+    name:
+      - libspandsp2
+      - ngcp-rtpengine
+      - linux-headers-{{ kernel_version.stdout }}
+    state: latest
+    install_recommends: no
+    update_cache: no

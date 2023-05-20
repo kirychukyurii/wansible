@@ -1,0 +1,44 @@
+---
+- name: Create/Update dashboards file (provisioning)
+  become: true
+  copy:
+    dest: "/etc/grafana/provisioning/dashboards/ansible.yml"
+    content: |
+      apiVersion: 1
+      providers:
+       - name: 'default'
+         orgId: 1
+         folder: ''
+         type: file
+         allowUiUpdates: true
+         options:
+           path: "/var/lib/grafana/dashboards"
+    backup: false
+    owner: root
+    group: grafana
+    mode: 0640
+  notify: restart grafana
+
+- name: Import grafana dashboards
+  become: true
+  copy:
+    src: "{{ item }}"
+    dest: "/var/lib/grafana/dashboards/{{ item | basename }}"
+  with_fileglob:
+    - "files/{{ grafana_basic_dashboards_language }}/*.json"
+  notify: "provisioned dashboards changed"
+
+- name: Find /var/lib/grafana/dashboards files ending with .json via regex
+  find:
+    paths: /var/lib/grafana/dashboards
+    patterns: "^.*?\\.(?:json)$"
+    use_regex: yes
+  register: grafana_dashboards_list_files
+
+- name: Set the correct data source name in the dashboard
+  replace:
+    path: "/var/lib/grafana/dashboards/{{ item.path | basename }}"
+    regexp: '"(?:\${)?DS_[A-Z0-9_-]+(?:})?"'
+    replace: '"PostgreSQL"'
+  changed_when: false
+  with_items: "{{ grafana_dashboards_list_files.files }}"

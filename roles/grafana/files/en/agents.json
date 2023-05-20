@@ -1,0 +1,844 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_POSTGRESQL",
+      "label": "PostgreSQL",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "postgres",
+      "pluginName": "PostgreSQL"
+    },
+    {
+      "name": "VAR_DOMAIN_ID",
+      "type": "constant",
+      "label": "domain_id",
+      "value": "1",
+      "description": ""
+    }
+  ],
+  "__elements": [],
+  "__requires": [
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "9.0.2"
+    },
+    {
+      "type": "datasource",
+      "id": "postgres",
+      "name": "PostgreSQL",
+      "version": "1.0.0"
+    },
+    {
+      "type": "panel",
+      "id": "stat",
+      "name": "Stat",
+      "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "table",
+      "name": "Table",
+      "version": ""
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "datasource",
+          "uid": "grafana"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "target": {
+          "limit": 100,
+          "matchAny": false,
+          "tags": [],
+          "type": "dashboard"
+        },
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "iteration": 1661174734413,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "custom": {
+            "align": "center",
+            "displayMode": "auto",
+            "filterable": true,
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-red",
+                "value": null
+              },
+              {
+                "color": "#EAB839",
+                "value": 2
+              },
+              {
+                "color": "dark-green",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "dark-red",
+                      "value": null
+                    },
+                    {
+                      "color": "dark-orange",
+                      "value": 2
+                    },
+                    {
+                      "color": "dark-green",
+                      "value": 3
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "dark-yellow",
+                  "mode": "thresholds"
+                }
+              },
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              },
+              {
+                "id": "custom.width",
+                "value": 149
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Agent"
+            },
+            "properties": [
+              {
+                "id": "custom.align",
+                "value": "left"
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "",
+                    "url": "d/IKFzU5n7z/operator?var-agent_id=${__data.fields.id}&var-domain_id=$domain_id"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 14,
+        "x": 0,
+        "y": 0
+      },
+      "id": 4,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "9.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select\r\n       coalesce(u.name, u.username) \"Agent\",\r\n            case\r\n           when a.status = 'online' then 3\r\n           when a.status = 'pause' or a.status = 'break_out' then 2\r\n           when a.status = 'offline' then 0\r\n           else 0 end\r\n         \"Status\",\r\n         ( case when not exists  (select 1 from directory.wbt_user_presence up where up.open < 1 and up.user_id = a.user_id and up.status = any('{sip,web}')) then '+' else '-' end) \"SIP/WS\",\r\n                to_char(now() - a.last_state_change, 'HH24:MI:SS') \"Time in status\",\r\n        case when a.status = 'online' and not outc.v is true then \r\n              case when ch.state = 'offering' then 'Offering'\r\n                   when ch.state = 'bridged' then 'Busy'\r\n                   when ch.state = 'waiting' then 'Waiting'\r\n                   when ch.state = 'processing' then 'Post-processing'\r\n                   when ch.state = 'wrap_time' then 'Wrap up'\r\n              else ch.state end\r\n             when outc.v is true then 'Outgoing call'\r\n             when a.status = 'pause' then 'Break'\r\n            else '' end \"State\",  \r\n\r\n        case when a.status = 'online' then to_char(now() - ch.joined_at, 'HH24:MI:SS') else '' end \"Time in state\",\r\n        coalesce(a.status_payload, '') \"Comment\",\r\n        a.id\r\nfrom call_center.cc_agent a\r\n    left join directory.wbt_user u on u.id = a.user_id\r\n    left join call_center.cc_agent_channel ch on ch.agent_id = a.id\r\n    left join LATERAL (\r\n        select true v\r\n        from call_center.cc_calls co\r\n        where co.user_id = a.user_id and co.direction = 'outbound' and co.hangup_at isnull\r\n        limit 1\r\n    ) outc on true\r\nwhere a.domain_id = $domain_id \r\n        and (($status) isnull or a.status in ($status))\r\n        and (($aId) isnull or a.id in ($aId))\r\n        and (($tId) isnull or a.team_id in ($tId))\r\norder by case when a.status = 'online' then 1\r\n              when a.status = 'pause' then 2\r\n              else 3 end asc, coalesce(u.name, u.username)",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Agent's current status",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 14,
+        "y": 0
+      },
+      "id": 6,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "center",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "/^b2$/",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "9.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select time_bucket('$__interval', h.created_at::timestamptz) as time, avg(extract (epoch from h.hangup_at - h.bridged_at)) b2\nfrom call_center.cc_calls_history h\nwhere h.created_at between $__timeFrom() and $__timeTo() \n and h.domain_id = $domain_id\n and h.user_id in (select a.user_id \n    from call_center.cc_agent a \n    where a.domain_id = $domain_id\n            and (($status) isnull or a.status in ($status))\n        and (($aId) isnull or a.id in ($aId))\n        and (($tId) isnull or a.team_id in ($tId))\n    )\n and h.bridged_at notnull\ngroup by 1\norder by 1 desc",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Average talk time",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "light-yellow",
+                "value": null
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 19,
+        "y": 0
+      },
+      "id": 8,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {},
+        "textMode": "auto"
+      },
+      "pluginVersion": "9.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select time_bucket('$__interval', h.created_at::timestamptz) as time, avg(h.hold_sec) b2\nfrom call_center.cc_calls_history h\nwhere h.created_at between $__timeFrom() and $__timeTo() \n and h.domain_id = $domain_id\n and h.user_id in (select a.user_id \n    from call_center.cc_agent a \n    where a.domain_id = $domain_id\n            and (($status) isnull or a.status in ($status))\n        and (($aId) isnull or a.id in ($aId))\n        and (($tId) isnull or a.team_id in ($tId))\n  )\n and h.bridged_at notnull\nand h.hold_sec > 0  \ngroup by 1\norder by 1 desc",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Average hold time (by agent)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "semi-dark-green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Offline"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "dark-red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Break"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "dark-orange",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Break out"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "red",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Online"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "transparent",
+                      "value": null
+                    },
+                    {
+                      "color": "dark-green",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 5,
+        "w": 10,
+        "x": 14,
+        "y": 5
+      },
+      "id": 10,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "text": {
+          "titleSize": 24,
+          "valueSize": 60
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "9.0.2",
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "select count(*) filter ( where a.status = 'offline' ) \"Offline\",\n       count(*) filter ( where a.status = 'online' ) \"Online\",\n       count(*) filter ( where a.status = 'pause' ) \"Break\",\n       count(*) filter ( where a.status = 'break_out' ) \"Break out\"\nfrom call_center.cc_agent a\nwhere a.domain_id = $domain_id",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Statuses",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "${DS_POSTGRESQL}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-GrYlRd"
+          },
+          "custom": {
+            "align": "center",
+            "displayMode": "auto",
+            "inspect": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Agent"
+            },
+            "properties": [
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "ttest",
+                    "url": "d/IKFzU5n7z/operator?var-agent_id=${__data.fields.agent_id}&var-domain_id=$domain_id"
+                  }
+                ]
+              },
+              {
+                "id": "custom.align",
+                "value": "left"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Login time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Logout time"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsIso"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 10
+      },
+      "id": 2,
+      "options": {
+        "footer": {
+          "fields": "",
+          "reducer": [
+            "sum"
+          ],
+          "show": false
+        },
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "Время входа в систему"
+          }
+        ]
+      },
+      "pluginVersion": "9.0.2",
+      "targets": [
+        {
+          "$$hashKey": "object:47",
+          "aggregation": "Last",
+          "datasource": {
+            "type": "postgres",
+            "uid": "${DS_POSTGRESQL}"
+          },
+          "decimals": 2,
+          "displayAliasType": "Warning / Critical",
+          "displayType": "Regular",
+          "displayValueWithAlias": "Never",
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "with agents as (\n    select distinct\n           coalesce(u.name, u.username) \"name\",\n           a.user_id,\n           a.status,\n           a.last_state_change,\n           a.id as agent_id\n    from call_center.cc_agent a\n        inner join directory.wbt_user u on u.id = a.user_id\n    where a.domain_id = $domain_id\n             and (($status) isnull or a.status in ($status))\n        and (($aId) isnull or a.id in ($aId))\n        and (($tId) isnull or a.team_id in ($tId))\n    group by coalesce(u.name, u.username),2,3,4, 5\n    order by coalesce(u.name, u.username)\n),\ncalls as (\n    select h.user_id,\n           count(*) filter ( where cq.type = 1 and h.bridged_at notnull ) \"inbound queue\",\n           count(*) filter ( where h.direction = 'inbound' and h.queue_id isnull ) \"direct inbound\",\n           count(*) filter ( where h.direction = 'outbound' and h.queue_id isnull ) \"direct outboud\",\n           avg(h.hangup_at - h.bridged_at) filter ( where h.bridged_at notnull and h.direction = 'inbound') \"avg bill inbound\",\n           avg(h.hangup_at - h.bridged_at) filter ( where h.bridged_at notnull and h.direction = 'outbound') \"avg bill outbound\",\n           sum(h.hangup_at - h.bridged_at) filter ( where h.bridged_at notnull ) \"sum bill\",\n           avg(h.hangup_at - h.bridged_at) filter ( where h.bridged_at notnull ) \"avg_talk\",\n           sum((h.hold_sec || ' sec')::interval) as \"sum hold\",\n           avg((h.hold_sec || ' sec')::interval) filter ( where h.hold_sec > 0 ) as \"avg hold\",\n           count(*)  filter (where cq.type = any(array[0,3,4,5]::int2[])) outbound_queue\n    from call_center.cc_calls_history h\n        left join call_center.cc_queue cq on h.queue_id = cq.id\n        left join call_center.cc_member_attempt_history cc on cc.id = h.attempt_id\n    where h.domain_id = $domain_id and h.created_at between $__timeFrom()::timestamptz and $__timeTo()::timestamptz\n        and h.user_id in (\n            select distinct agents.user_id\n            from agents\n        )\n    group by h.user_id\n),\nstatus as (\n    select\n        s.agent_id,\n        case when s.online isnull and a.status = 'online' then a.last_state_change else s.online end online,\n        case when a.status = 'offline' then a.last_state_change else s.offline end offline,\n        case when a.status in ('online', 'pause') then s.online_dur + (now() - a.last_state_change) else s.online_dur end online_dur,\n        case when a.status = 'pause' then coalesce(s.pause, interval '0 sec') + (now() - a.last_state_change) else coalesce(s.pause, interval '0 sec') end pause_dur,\n        case when a.status = 'online' then coalesce(s.on_online_dur, interval '0 sec') + (now() - a.last_state_change) else coalesce(s.on_online_dur, interval '0 sec') end onl_online_all,\n        s.sum_wrap,\n        s.avg_wrap,\n        s.sum_wrap + s.bridged + s.offering + s.processing + s.missed as all_work\n    from (\n             select h.agent_id,\n               min(h.joined_at) filter ( where h.state = 'online' ) online,\n               max(h.joined_at) filter ( where h.state = 'offline' ) offline,\n               sum(h.duration) filter ( where h.state in ('online', 'pause') ) online_dur,\n               sum(h.duration) filter ( where h.state in ('online') ) on_online_dur,\n               sum(h.duration) filter ( where h.state = 'pause' )  pause,\n               coalesce(sum(duration) filter ( where state = 'wrap_time' and channel = 'call' ), interval '0') as sum_wrap,\n               coalesce(sum(duration) filter ( where h.state = 'bridged' ), interval '0')   bridged,\n               coalesce(sum(duration) filter ( where h.state = 'offering' ), interval '0')  offering,\n               coalesce(sum(duration) filter ( where h.state = 'processing' ), interval '0')  processing,\n               coalesce(sum(duration) filter ( where h.state = 'missed' ), interval '0')  missed,\n\n               avg(duration) filter ( where state = 'wrap_time' and channel = 'call' ) as avg_wrap\n            from call_center.cc_agent_state_history h\n            where h.joined_at between $__timeFrom()::timestamptz and $__timeTo()::timestamptz\n                and h.agent_id in (\n                    select distinct agent_id\n                    from agents\n                )\n            group by h.agent_id\n    ) s\n    inner join agents a on a.agent_id = s.agent_id\n)\nselect a.name \"Agent\",\n       s.online \"Login time\",\n       case when s.offline notnull then s.offline else null end \"Logout time\",\n       TO_CHAR(coalesce(s.online_dur, interval '0 sec'), 'HH24:MI:SS') \"Time in the system\",\n       round(coalesce(case when s.onl_online_all > interval '0' then (extract(epoch from s.onl_online_all)/(extract(epoch from online_dur))) * 100 else 0 end , 0)::numeric, 2) || ' %' \"Utilization\",\n       LEAST(round(coalesce(case when s.onl_online_all > interval '0' then (extract(epoch from s.all_work)/(extract(epoch from online_dur))) * 100 else 0 end , 0)::numeric, 2), 100 ) || ' %' \"Efficiency, occ\",\n       coalesce(c.\"inbound queue\", 0) \"ACD calls\",\n       coalesce(c.outbound_queue, 0) \"Outbound queue\",\n      -- coalesce(c.\"direct inbound\", 0 ) \"Входящие звонки на внутр. номер\",\n       coalesce(c.\"direct outboud\", 0) \"Outbound calls from internal number\",\n   --    TO_CHAR(coalesce(c.\"avg bill inbound\", interval '0 sec'), 'HH24:MI:SS') \"Среднее время разговора входящие\",\n   --    TO_CHAR(coalesce(c.\"avg bill outbound\", interval '0 sec'), 'HH24:MI:SS') \"Среднее время разговора исходящие\",\n       to_char(coalesce(c.\"sum bill\", interval '0 sec'), 'HH24:MI:SS') \"Total talk time\",\n       to_char(coalesce(c.avg_talk, interval '0 sec'), 'HH24:MI:SS') \"Avg talk time\",\n   --    to_char(coalesce(s.sum_wrap, interval '0 sec'), 'HH24:MI:SS') \"Время пост вызывной обработки\",\n   --    to_char(coalesce(s.avg_wrap, interval '0 sec'), 'HH24:MI:SS') \"Среднее время пост вызывной\",\n       to_char(coalesce(c.\"sum hold\", interval '0 sec'), 'HH24:MI:SS') \"Total hold time\",\n       to_char(coalesce(c.\"avg hold\", interval '0 sec'), 'HH24:MI:SS') \"Avg hold time\",\n       to_char(coalesce(s.pause_dur, interval '0 sec'), 'HH24:MI:SS') \"Break time\",\n       a.agent_id\nfrom agents a\n    left join status s on s.agent_id = a.agent_id\n    left join calls c on a.user_id = c.user_id\norder by a.name;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "units": "none",
+          "valueHandler": "Number Threshold",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "title": "Agents",
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "agent_id": false
+            },
+            "indexByName": {},
+            "renameByName": {
+              "agent_id": ""
+            }
+          }
+        }
+      ],
+      "type": "table"
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 36,
+  "style": "dark",
+  "tags": [
+    "dash"
+  ],
+  "templating": {
+    "list": [
+      {
+        "hide": 2,
+        "name": "domain_id",
+        "query": "${VAR_DOMAIN_ID}",
+        "skipUrlSync": false,
+        "type": "constant",
+        "current": {
+          "value": "${VAR_DOMAIN_ID}",
+          "text": "${VAR_DOMAIN_ID}",
+          "selected": false
+        },
+        "options": [
+          {
+            "value": "${VAR_DOMAIN_ID}",
+            "text": "${VAR_DOMAIN_ID}",
+            "selected": false
+          }
+        ]
+      },
+      {
+        "allValue": "null",
+        "current": {},
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_POSTGRESQL}"
+        },
+        "definition": "select coalesce(u.name, u.username)  AS __text, a.id AS __value from call_center.cc_agent a inner join directory.wbt_user u on u.id = a.user_id  where dc= $domain_id  limit 1000",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Agents",
+        "multi": true,
+        "name": "aId",
+        "options": [],
+        "query": "select coalesce(u.name, u.username)  AS __text, a.id AS __value from call_center.cc_agent a inner join directory.wbt_user u on u.id = a.user_id  where dc= $domain_id  limit 1000",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": "null",
+        "current": {},
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_POSTGRESQL}"
+        },
+        "definition": "select 'Online' __text, 'online'  __value\nunion\nselect 'Offline', 'offline'\nunion\nselect 'On break', 'pause'\nunion\nselect 'Break out', 'break_out';",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Status",
+        "multi": true,
+        "name": "status",
+        "options": [],
+        "query": "select 'Online' __text, 'online'  __value\nunion\nselect 'Offline', 'offline'\nunion\nselect 'On break', 'pause'\nunion\nselect 'Break out', 'break_out';",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "allValue": "null",
+        "current": {},
+        "datasource": {
+          "type": "postgres",
+          "uid": "${DS_POSTGRESQL}"
+        },
+        "definition": "select name AS __text, id AS __value\nfrom call_center.cc_team\nwhere domain_id = $domain_id",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Team",
+        "multi": true,
+        "name": "tId",
+        "options": [],
+        "query": "select name AS __text, id AS __value\nfrom call_center.cc_team\nwhere domain_id = $domain_id",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": {
+    "from": "now/d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "Asia/Ho_Chi_Minh",
+  "title": "Agents",
+  "uid": "RVJgUcnnk",
+  "version": 1,
+  "weekStart": ""
+}

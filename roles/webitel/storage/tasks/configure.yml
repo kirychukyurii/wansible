@@ -1,0 +1,100 @@
+---
+- name: Ensure bootstrapped file exists
+  copy:
+    content: ""
+    dest: /opt/webitel/.bootstrap
+    force: no
+
+- name: Read bootstrapped state. Ensure /opt/webitel/.bootstrap contains webitel_storage
+  lineinfile:
+    path: /opt/webitel/.bootstrap
+    regexp: "^webitel_storage"
+    state: absent
+  check_mode: yes
+  changed_when: false
+  ignore_errors: true
+  register: bootstrap_state
+
+- when: not bootstrap_state.found
+  block:
+    - name: Copy webitel systemd files
+      copy:
+        src: "/opt/webitel/etc/systemd/system/storage.service"
+        dest: /etc/systemd/system/
+        remote_src: yes
+      when:
+        - ansible_service_mgr == "systemd"
+
+    - name: Storage URL for letsencrypt
+      replace:
+        path: '/etc/systemd/system/storage.service'
+        after: '-public_host https://'
+        before: ' '
+        regexp: '^(.+)$'
+        replace: '{{ nginx_site_name }}'
+      when: nginx_letsencrypt | bool
+
+    - when: groups['all'] | length > 1
+      block:
+        - name: Change Consul IP
+          replace:
+            path: '/etc/systemd/system/storage.service'
+            after: '-consul '
+            before: ':8500'
+            regexp: '^(.+)$'
+            replace: "{{ hostvars[groups[ 'consul' ][0]]['ansible_default_ipv4']['address'] }}"
+
+        - name: Change GRPC IP
+          replace:
+            path: '/etc/systemd/system/storage.service'
+            after: '-grpc_addr '
+            before: ' '
+            regexp: '^(.+)$'
+            replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+        - name: Change internal IP
+          replace:
+            path: '/etc/systemd/system/storage.service'
+            after: '-internal_address '
+            before: ':10021'
+            regexp: '^(.+)$'
+            replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+        - name: Change public IP
+          replace:
+            path: '/etc/systemd/system/storage.service'
+            after: '-public_address '
+            before: ':10023'
+            regexp: '^(.+)$'
+            replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+        - name: Change public host URL
+          replace:
+            path: '/etc/systemd/system/storage.service'
+            after: '-public_host https://'
+            before: ' '
+            regexp: '^(.+)$'
+            replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+        - name: Change PostgreSQL IP
+          replace:
+            path: '/etc/systemd/system/storage.service'
+            after: '-data_source "postgres://opensips:webitel@'
+            before: ':5432'
+            regexp: '^(.+)$'
+            replace: "{{ hostvars[groups[ 'postgresql_main' ][0]]['ansible_default_ipv4']['address'] }}"
+
+    - name: Enable webitel at startup (systemd)
+      systemd:
+        name: "storage.service"
+        enabled: yes
+        daemon_reload: yes
+        state: restarted
+      when:
+        - ansible_service_mgr == "systemd"
+
+    - name: Insert info into bootstrapped state file
+      lineinfile:
+        path: /opt/webitel/.bootstrap
+        line: "webitel_storage"
+        insertbefore: BOF

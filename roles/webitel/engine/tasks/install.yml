@@ -1,0 +1,8 @@
+---
+- name: Install webitel_engine
+  apt:
+    name:
+      - webitel-engine
+    state: latest
+    update_cache: no
+    install_recommends: no

@@ -1,0 +1,94 @@
+---
+- name: Read bootstrapped state
+  stat:
+    path: /etc/rabbitmq/.bootstrap
+  register: bootstrap_state
+  ignore_errors: true
+  tags: always
+
+- when: not bootstrap_state.stat.exists
+  block:
+    - name: Create rabbitmq-service directory
+      file:
+        dest: /etc/systemd/system/rabbitmq-server.service.d
+        state: directory
+
+    - name: Add rabbitmq limits
+      copy:
+        content: |
+          [Service]
+          LimitNOFILE=64000
+        dest: /etc/systemd/system/rabbitmq-server.service.d/limits.conf
+        force: yes
+
+    - name: Download "rabbitmq plugins"
+      get_url:
+        url: https://git.webitel.com/projects/WEP/repos/rabbitmq/raw/enabled_plugins
+        dest: /etc/rabbitmq/enabled_plugins
+
+    - name: Download "rabbitmq config"
+      get_url:
+        url: https://git.webitel.com/projects/WEP/repos/rabbitmq/raw/rabbitmq.conf
+        dest: /etc/rabbitmq/rabbitmq.conf
+
+    - name: Change RabbitMQ disk free limit
+      lineinfile:
+        path: '/etc/rabbitmq/rabbitmq.conf'
+        state: present
+        regexp: '^disk_free_limit.absolute'
+        line: "disk_free_limit.absolute = 2GB"
+
+    - when: groups['all'] | length > 1
+      block:
+        - name: Change Consul IP
+          lineinfile:
+            path: '/etc/rabbitmq/rabbitmq.conf'
+            state: present
+            regexp: '^cluster_formation.consul.host'
+            line: "cluster_formation.consul.host = {{ hostvars[groups[ 'consul' ][0]]['ansible_default_ipv4']['address'] }}"
+
+        - name: Change RabbitMQ listen IP
+          lineinfile:
+            path: '/etc/rabbitmq/rabbitmq.conf'
+            state: present
+            regexp: '^listeners.tcp.1'
+            line: "listeners.tcp.1 = {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:5672"
+
+        - name: Change RabbitMQ management IP
+          lineinfile:
+            path: '/etc/rabbitmq/rabbitmq.conf'
+            state: present
+            regexp: '^management.tcp.ip'
+            line: "management.tcp.ip = {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+    - name: Enable rabbitmq at startup (systemd)
+      systemd:
+        name: rabbitmq-server
+        enabled: yes
+        state: restarted
+        daemon_reload: true
+      when:
+        - ansible_service_mgr == "systemd"
+
+    - name: Add webitel user
+      community.rabbitmq.rabbitmq_user:
+        user: webitel
+        password: webitel
+        tags: administrator
+        permissions:
+          - vhost: /
+            configure_priv: .*
+            read_priv: .*
+            write_priv: .*
+        state: present
+
+    - name: Delete guest user
+      community.rabbitmq.rabbitmq_user:
+        user: webguest
+        state: absent
+
+    - name: Create bootstrapped state file
+      file:
+        dest: /etc/rabbitmq/.bootstrap
+        state: touch
+      notify: restart rabbitmq-server

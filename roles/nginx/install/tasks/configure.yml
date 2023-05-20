@@ -1,0 +1,84 @@
+---
+- name: Read bootstrapped state
+  stat:
+    path: /etc/nginx/.bootstrap
+  register: bootstrap_state
+  ignore_errors: true
+  tags: always
+
+- when: not bootstrap_state.stat.exists
+  block:
+    - name: Download nginx.conf
+      get_url:
+        url: "https://git.webitel.com/projects/WEP/repos/nginx/raw/nginx.conf"
+        dest: "/etc/nginx/nginx.conf"
+
+    - name: Download nginx site
+      get_url:
+        url: "https://git.webitel.com/projects/WEP/repos/nginx/raw/default"
+        dest: "/etc/nginx/sites-enabled/default"
+
+    - when: groups['all'] | length > 1
+      block:
+        - name: Change Webitel Storage IP
+          replace:
+            path: '/etc/nginx/sites-enabled/default'
+            regexp: '(^.*)(http://127\.0\.0\.1)(:10023;)$'
+            replace: '\1 http://{{ hostvars[groups[ "webitel_storage" ][0]]["ansible_default_ipv4"]["address"] }}\3'
+
+        - name: Change Webitel Storage IP
+          replace:
+            path: '/etc/nginx/sites-enabled/default'
+            regexp: '(^.*POST.*)(\s"127\.0\.0\.1:10023")(.*$)'
+            replace: '\1 "{{ hostvars[groups[ "webitel_storage" ][0]]["ansible_default_ipv4"]["address"] }}:10023"\3'
+
+        - name: Change Webitel API IP
+          replace:
+            path: '/etc/nginx/sites-enabled/default'
+            regexp: '(^.*)(http://127\.0\.0\.1)(:8080;)$'
+            replace: '\1 http://{{ hostvars[groups[ "webitel_core" ][0]]["ansible_default_ipv4"]["address"] }}\3'
+
+        - name: Change Webitel API IP
+          replace:
+            path: '/etc/nginx/sites-enabled/default'
+            regexp: '(^.*default.*)(\s"127\.0\.0\.1:8080")(.*$)'
+            replace: '\1 "{{ hostvars[groups[ "webitel_core" ][0]]["ansible_default_ipv4"]["address"] }}:8080"\3'
+
+        - name: Change Webitel Messages IP
+          replace:
+            path: '/etc/nginx/sites-enabled/default'
+            regexp: '(^.*)(http://127\.0\.0\.1)(:10031;)$'
+            replace: '\1 http://{{ hostvars[groups[ "webitel_messages" ][0]]["ansible_default_ipv4"]["address"] }}\3'
+
+        - name: Change WS IP
+          replace:
+            path: '/etc/nginx/sites-enabled/default'
+            regexp: '(^.*)(http://127\.0\.0\.1)(:10022;)$'
+            replace: '\1 http://{{ hostvars[groups[ "webitel_engine" ][0]]["ansible_default_ipv4"]["address"] }}\3'
+
+        - name: Change SIP IP
+          replace:
+            path: '/etc/nginx/sites-enabled/default'
+            regexp: '(^.*)(http://127\.0\.0\.1)(:5070;)$'
+            replace: '\1 http://{{ hostvars[groups[ "opensips" ][0]]["ansible_default_ipv4"]["address"] }}\3'
+
+        - name: Change Grafana IP
+          replace:
+            path: '/etc/nginx/sites-enabled/default'
+            regexp: '(^.*)(http://127\.0\.0\.1)(:3000;)$'
+            replace: '\1 http://{{ hostvars[groups[ "grafana" ][0]]["ansible_default_ipv4"]["address"] }}\3'
+          when: grafana_enable | bool
+
+    - name: Enable nginx at startup (systemd)
+      systemd:
+        name: nginx
+        enabled: yes
+        state: restarted
+        daemon_reload: yes
+      when:
+        - ansible_service_mgr == "systemd"
+
+    - name: Create bootstrapped state file
+      file:
+        dest: /etc/nginx/.bootstrap
+        state: touch

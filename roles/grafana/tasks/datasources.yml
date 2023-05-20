@@ -1,0 +1,29 @@
+---
+- name: Create/Update datasources file (provisioning)
+  become: true
+  copy:
+    dest: "/etc/grafana/provisioning/datasources/pgsql_main.yml"
+    content: |
+      apiVersion: 1
+      deleteDatasources: []
+      datasources:
+        - name: "PostgreSQL"
+          type: "postgres"
+          url: "{{ hostvars[groups[ 'postgresql_main' ][0]]['ansible_default_ipv4']['address'] }}:5432"
+          database: "webitel"
+          user: "opensips"
+          secureJsonData:
+            password: "webitel"
+          jsonData:
+            sslmode: "disable" # disable/require/verify-ca/verify-full
+            maxOpenConns: 0 # Grafana v5.4+
+            maxIdleConns: 2 # Grafana v5.4+
+            connMaxLifetime: 14400 # Grafana v5.4+
+            postgresVersion: 1400 # 903=9.3, 904=9.4, 905=9.5, 906=9.6, 1000=10
+            timescaledb: true
+          isDefault: true
+    backup: false
+    owner: root
+    group: grafana
+    mode: 0640
+  notify: restart grafana

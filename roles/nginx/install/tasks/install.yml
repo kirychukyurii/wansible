@@ -1,0 +1,7 @@
+---
+- name: Install NGINX and webitel-www packages
+  apt:
+    name:
+      - nginx
+      - webitel-www
+    update_cache: no

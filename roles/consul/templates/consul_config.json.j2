@@ -1,0 +1,14 @@
+{
+  "data_dir": "/var/consul",
+  "server": true,
+{% if groups['all'] | length > 1 %}
+  "client_addr": "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}",
+{% else %}
+  "client_addr": "127.0.0.1",
+{% endif %}
+  "bootstrap_expect": 1,
+  "disable_update_check": true,
+  "disable_remote_exec": true,
+  "enable_syslog": true,
+  "ui": false
+}

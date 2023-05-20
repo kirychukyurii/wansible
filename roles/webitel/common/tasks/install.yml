@@ -1,0 +1,8 @@
+---
+- name: Install webitel-common
+  apt:
+    name:
+      - webitel-common
+    state: latest
+    update_cache: no
+    install_recommends: no

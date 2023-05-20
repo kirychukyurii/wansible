@@ -1,0 +1,54 @@
+---
+- name: Read bootstrapped state
+  stat:
+    path: /etc/rtpengine/.bootstrap
+  register: bootstrap_state
+  ignore_errors: true
+  tags: always
+
+- when: not bootstrap_state.stat.exists
+  block:
+    - name: Download rtpengine configure
+      get_url:
+        url: https://git.webitel.com/projects/WEP/repos/rtpengine/raw/rtpengine.conf
+        dest: /etc/rtpengine/rtpengine.conf
+
+    - name: Change RTP IP
+      replace:
+        path: /etc/rtpengine/rtpengine.conf
+        regexp: '(1\.1\.1\.1)$'
+        replace: '{{ hostvars[inventory_hostname]["ansible_default_ipv4"]["address"] }}'
+      when: rtpengine_mode == "local" or rtpengine_public_ip.ansible_facts.ipify_public_ip is not defined
+
+    - name: Change RTP IP
+      lineinfile:
+        path: '/etc/rtpengine/rtpengine.conf'
+        state: present
+        regexp: '^interface'
+        line: "interface = {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}!{{ rtpengine_public_ip.ansible_facts.ipify_public_ip }}"
+      when:
+        - rtpengine_public_ip.ansible_facts.ipify_public_ip is defined
+        - rtpengine_mode == "global"
+
+    - when: groups['all'] | length > 1
+      block:
+        - name: Change listen RTP IP
+          lineinfile:
+            path: '/etc/rtpengine/rtpengine.conf'
+            state: present
+            regexp: '^listen-ng'
+            line: "listen-ng = {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:60000"
+
+    - name: Enable rtpengine at startup (systemd)
+      systemd:
+        name: ngcp-rtpengine-daemon
+        enabled: yes
+        daemon_reload: yes
+        state: restarted
+      when:
+        - ansible_service_mgr == "systemd"
+
+    - name: Create bootstrapped state file
+      file:
+        dest: /etc/rtpengine/.bootstrap
+        state: touch

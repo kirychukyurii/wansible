@@ -1,0 +1,12 @@
+---
+- when: inventory_hostname in groups['rabbitmq']
+  block:
+    - include: install.yml
+      become: true
+      tags:
+        - rabbitmq_install
+
+    - include: configure.yml
+      become: true
+      tags:
+        - rabbitmq_configure

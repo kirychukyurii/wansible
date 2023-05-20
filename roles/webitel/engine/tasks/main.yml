@@ -1,0 +1,12 @@
+---
+- when: inventory_hostname in groups['webitel_engine']
+  block:
+    - include: install.yml
+      become: true
+      tags:
+        - webitel_engine_install
+
+    - include: configure.yml
+      become: true
+      tags:
+        - webitel_engine_configure

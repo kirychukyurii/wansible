@@ -1,0 +1,18 @@
+---
+- when: inventory_hostname in groups['nginx']
+  block:
+    - include: install.yml
+      become: true
+      tags:
+        - nginx_install
+
+    - include: configure.yml
+      become: true
+      tags:
+        - nginx_configure
+
+    - include_role:
+        name: nginx/certbot
+      tags:
+        - nginx_letsencrypt
+      when: nginx_letsencrypt | bool

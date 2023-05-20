@@ -1,0 +1,44 @@
+---
+- name: Install FreeSWITCH packages
+  apt:
+    name:
+      - freeswitch
+      - freeswitch-mod-av
+      - freeswitch-mod-opus
+      - freeswitch-mod-opusfile
+      - freeswitch-mod-sndfile
+      - freeswitch-mod-shout
+      - freeswitch-mod-sofia
+      - freeswitch-mod-dialplan-xml
+      - freeswitch-mod-valet-parking
+      - freeswitch-mod-conference
+      - freeswitch-mod-console
+      - freeswitch-mod-event-socket
+      - freeswitch-mod-loopback
+      - freeswitch-mod-commands
+      - freeswitch-mod-db
+      - freeswitch-mod-dptools
+      - freeswitch-mod-expr
+      - freeswitch-mod-hash
+      - freeswitch-mod-spandsp
+      - freeswitch-mod-imagick
+      - freeswitch-mod-png
+      - freeswitch-mod-native-file
+      - freeswitch-mod-logfile
+      - freeswitch-mod-local-stream
+      - freeswitch-mod-tone-stream
+      - freeswitch-mod-lua
+      - freeswitch-mod-http-cache
+      - freeswitch-mod-spy
+      - freeswitch-mod-json-cdr
+      - freeswitch-music-default
+      - freeswitch-systemd
+      - librabbitmq4
+      - imagemagick
+      - freeswitch-mod-amd
+      - freeswitch-mod-amqp
+      - freeswitch-mod-grpc
+      - freeswitch-mod-google-transcribe
+    state: latest
+    update_cache: no
+    install_recommends: no

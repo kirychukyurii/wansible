@@ -1,0 +1,18 @@
+---
+- when: inventory_hostname in groups['opensips']
+  block:
+    - include: install.yml
+      become: true
+      tags:
+        - opensips_install
+
+    - include: configure.yml
+      become: true
+      tags:
+        - opensips_configure
+
+    - include: fail2ban.yml
+      become: true
+      tags:
+        - opensips_fail2ban
+      when: opensips_fail2ban | bool

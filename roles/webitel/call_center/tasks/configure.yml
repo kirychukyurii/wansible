@@ -1,0 +1,75 @@
+---
+- name: Ensure bootstrapped file exists
+  copy:
+    content: ""
+    dest: /opt/webitel/.bootstrap
+    force: no
+
+- name: Read bootstrapped state. Ensure /opt/webitel/.bootstrap contains webitel_call_center
+  lineinfile:
+    path: /opt/webitel/.bootstrap
+    regexp: "^webitel_call_center"
+    state: absent
+  check_mode: yes
+  changed_when: false
+  ignore_errors: true
+  register: bootstrap_state
+
+- when: not bootstrap_state.found
+  block:
+    - name: Copy webitel_call_center systemd file
+      copy:
+        src: "/opt/webitel/etc/systemd/system/call_center.service"
+        dest: /etc/systemd/system/
+        remote_src: yes
+      when:
+        - ansible_service_mgr == "systemd"
+
+    - when: groups['all'] | length > 1
+      block:
+        - name: Consul IP
+          replace:
+            path: '/etc/systemd/system/call_center.service'
+            after: '-consul '
+            before: ':8500'
+            regexp: '^(.+)$'
+            replace: "{{ hostvars[groups[ 'consul' ][0]]['ansible_default_ipv4']['address'] }}"
+
+        - name: GRPC IP
+          replace:
+            path: '/etc/systemd/system/call_center.service'
+            after: '-grpc_addr '
+            before: ' '
+            regexp: '^(.+)$'
+            replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+        - name: RabbitMQ IP
+          replace:
+            path: '/etc/systemd/system/call_center.service'
+            after: '-amqp amqp://webitel:webitel@'
+            before: ':5672'
+            regexp: '^(.+)$'
+            replace: "{{ hostvars[groups[ 'rabbitmq' ][0]]['ansible_default_ipv4']['address'] }}"
+
+        - name: PostgreSQL IP
+          replace:
+            path: '/etc/systemd/system/call_center.service'
+            after: '-data_source postgres://opensips:webitel@'
+            before: ':5432'
+            regexp: '^(.+)$'
+            replace: "{{ hostvars[groups[ 'postgresql_main' ][0]]['ansible_default_ipv4']['address'] }}"
+
+    - name: Enable webitel at startup (systemd)
+      systemd:
+        name: "call_center.service"
+        enabled: yes
+        daemon_reload: yes
+        state: restarted
+      when:
+        - ansible_service_mgr == "systemd"
+
+    - name: Insert info into bootstrapped state file
+      lineinfile:
+        path: /opt/webitel/.bootstrap
+        line: "webitel_call_center"
+        insertbefore: BOF

@@ -1,0 +1,40 @@
+---
+- name: Ensure grafana configuration directories exist
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: grafana
+  with_items:
+    - "/etc/grafana"
+    - "/etc/grafana/datasources"
+    - "/etc/grafana/provisioning"
+    - "/etc/grafana/provisioning/datasources"
+    - "/etc/grafana/provisioning/dashboards"
+    - "/etc/grafana/provisioning/notifiers"
+    - "/etc/grafana/provisioning/plugins"
+
+- name: Create grafana directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0755
+    owner: "grafana"
+    group: "grafana"
+  with_items:
+    - "/var/log/grafana"
+    - "/var/lib/grafana"
+    - "/var/lib/grafana/dashboards"
+    - "/var/lib/grafana/plugins"
+
+- name: Change grafana URL
+  lineinfile:
+    path: /etc/grafana/grafana.ini
+    regexp: '^;root_url ='
+    line: 'root_url = %(protocol)s://%(domain)s:%(http_port)s/grafana/'
+
+- name: Enable grafana at startup (systemd)
+  systemd:
+    name: grafana-server
+    state: restarted
+    enabled: yes

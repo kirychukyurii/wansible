@@ -1,0 +1,9 @@
+---
+- name: Install webitel software with APT
+  apt:
+    name:
+      - webitel-common
+      - webitel-call-center
+    state: latest
+    update_cache: no
+    install_recommends: no

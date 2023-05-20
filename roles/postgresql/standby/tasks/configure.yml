@@ -1,0 +1,43 @@
+---
+- name: pgpass for non interactive logins to the other node
+  blockinfile:
+    path: /var/lib/postgresql/14/.pgpass
+    create: yes
+    mode: 0600
+    block: |
+      # hostname:port:database:username:password
+      {% for host in groups['postgresql_main'] %}
+      {{ hostvars[host]['ansible_default_ipv4']['address'] + ':5432:replication:wbtrepl:password' }}
+      {% endfor %}
+  become_user: postgres
+
+- name: Stop database
+  systemd:
+    state: stopped
+    name: postgresql
+
+- name: Remove data
+  file:
+    state: absent
+    path: "/var/lib/postgresql/14/main/"
+  become_user: postgres
+
+- name: Check if database is already initialized
+  stat:
+    path: '/var/lib/postgresql/14/main/PG_VERSION'
+  register: init_status
+  become_user: postgres
+
+- name: Initialize the slave database
+  shell: "PGPASSFILE='/var/lib/postgresql/14/.pgpass' pg_basebackup -h {{ hostvars[item]['ansible_default_ipv4']['address'] }} -p 5432 -U wbtrepl -D /var/lib/postgresql/14/main/ -Fp -Xs -R -P"
+  become_user: postgres
+  with_items: "{{ groups[ 'postgresql_main' ] }}"
+  when: init_status.stat.exists == False
+
+- name: Start database
+  systemd:
+    name: "postgresql.service"
+    enabled: yes
+    daemon_reload: true
+    state: restarted
+

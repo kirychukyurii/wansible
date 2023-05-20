@@ -1,0 +1,31 @@
+---
+- when: inventory_hostname in groups['grafana']
+  block:
+    - include: install.yml
+      become: true
+      tags:
+        - grafana_install
+      when:
+        - grafana_enable | bool
+
+    - include: configure.yml
+      become: true
+      tags:
+        - grafana_configure
+      when:
+        - grafana_enable | bool
+
+    - include: datasources.yml
+      become: true
+      tags:
+        - grafana_datasource
+      when:
+        - grafana_enable | bool
+
+    - include: dashboards.yml
+      become: true
+      tags:
+        - grafana_dashboard
+      when:
+        - grafana_enable | bool
+        - grafana_basic_dashboards | bool

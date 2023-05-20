@@ -1,0 +1,23 @@
+---
+- name: Install OpenSIPS packages
+  apt:
+    name:
+      - opensips
+      - opensips-http-modules
+      - opensips-postgres-module
+      - opensips-presence-modules
+      - opensips-rabbitmq-modules
+      - opensips-wss-module
+      - opensips-tls-module
+      - opensips-tlsmgm-module
+      - opensips-xmlrpc-module
+    state: latest
+    install_recommends: no
+    update_cache: no
+
+- name: Enable OpenSIPS at startup (systemd)
+  systemd:
+    name: opensips
+    enabled: yes
+  when:
+    - ansible_service_mgr == "systemd"

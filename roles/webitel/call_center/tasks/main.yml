@@ -1,0 +1,12 @@
+---
+- when: inventory_hostname in groups['webitel_call_center']
+  block:
+    - include: install.yml
+      become: true
+      tags:
+        - webitel_call_center_install
+
+    - include: configure.yml
+      become: true
+      tags:
+        - webitel_call_center_configure
