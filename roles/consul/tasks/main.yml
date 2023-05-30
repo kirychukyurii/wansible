@@ -1,12 +1,10 @@
 ---
 - when: inventory_hostname in groups['consul']
   block:
-    - include: install.yml
-      become: true
+    - include_tasks: install.yml
       tags:
         - consul_install
 
-    - include: configure.yml
-      become: true
+    - include_tasks: configure.yml
       tags:
         - consul_configure

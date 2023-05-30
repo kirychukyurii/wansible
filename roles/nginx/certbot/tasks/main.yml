@@ -1,12 +1,10 @@
 ---
 - when: inventory_hostname in groups['nginx']
   block:
-    - include: install.yml
-      become: true
+    - include_tasks: install.yml
       tags:
         - certbot_install
 
-    - include: configure.yml
-      become: true
+    - include_tasks: configure.yml
       tags:
         - certbot_configure

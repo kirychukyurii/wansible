@@ -1,29 +1,25 @@
 ---
 - when: inventory_hostname in groups['grafana']
   block:
-    - include: install.yml
-      become: true
+    - include_tasks: install.yml
       tags:
         - grafana_install
       when:
         - grafana_enable | bool
 
-    - include: configure.yml
-      become: true
+    - include_tasks: configure.yml
       tags:
         - grafana_configure
       when:
         - grafana_enable | bool
 
-    - include: datasources.yml
-      become: true
+    - include_tasks: datasources.yml
       tags:
         - grafana_datasource
       when:
         - grafana_enable | bool
 
-    - include: dashboards.yml
-      become: true
+    - include_tasks: dashboards.yml
       tags:
         - grafana_dashboard
       when:

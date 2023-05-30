@@ -1,13 +1,11 @@
 ---
 - when: inventory_hostname in groups['webitel_storage']
   block:
-    - include: install.yml
-      become: true
+    - include_tasks: install.yml
       tags:
         - webitel_storage_install
 
-    - include: configure.yml
-      become: true
+    - include_tasks: configure.yml
       tags:
         - webitel_storage_configure
 

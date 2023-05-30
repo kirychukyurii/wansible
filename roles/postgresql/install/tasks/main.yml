@@ -1,12 +1,10 @@
 ---
 - when: inventory_hostname in groups['postgresql']
   block:
-    - include: install.yml
-      become: true
+    - include_tasks: install.yml
       tags:
         - postgresql_install
 
-    - include: configure.yml
-      become: true
+    - include_tasks: configure.yml
       tags:
         - postgresql_configure
