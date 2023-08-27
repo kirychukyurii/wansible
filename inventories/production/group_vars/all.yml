@@ -20,7 +20,7 @@ ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
 # The password to use to authenticate to the host
 # ansible_ssh_pass: "pAssw0rd"
 
-webitel_version: "23.02"
+webitel_version: "23.05"
 webitel_repository_user: "user"
 webitel_repository_password: "password"
 

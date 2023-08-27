@@ -1,10 +1,10 @@
 ---
-- name: Install PostgreSQL 14 and timescaledb packages
+- name: Install PostgreSQL 15 and timescaledb packages
   apt:
     name:
-      - postgresql-14
-      - webitel-postgresql-14
-      - timescaledb-2-postgresql-14
+      - postgresql-15
+      - webitel-postgresql-15
+      - timescaledb-2-postgresql-15
     update_cache: no
   when: inventory_hostname in groups['postgresql']
 

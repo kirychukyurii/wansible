@@ -25,16 +25,31 @@
             update_cache: yes
             install_recommends: no
 
-    - name: "Setup : Get RTPEngine public IP"
-      ipify_facts:
-      register: rtpengine_public_ip
-      until: rtpengine_public_ip is succeeded
-      retries: 5
-      delay: 2
-      when:
-        - rtpengine_mode == "global"
-        - inventory_hostname in groups['rtpengine']
-        - hostvars[inventory_hostname]['ansible_default_ipv4']['address'] is ansible.utils.private
+    - when: inventory_hostname in groups['rtpengine']
+      block:
+        - name: "Setup : Get RTPEngine public IP"
+          ipify_facts:
+          register: rtpengine_public_ip
+          until: rtpengine_public_ip is succeeded
+          retries: 5
+          delay: 2
+          when:
+            - rtpengine_mode == "global"
+            - hostvars[inventory_hostname]['ansible_default_ipv4']['address'] is ansible.utils.private
+
+        - name: "Setup : Download ngcp-keyring-latest.deb"
+          get_url:
+            url="https://deb.sipwise.com/spce/ngcp-keyring-latest.deb"
+            dest="/tmp/ngcp-keyring-latest.deb"
+
+        - name: Install ngcp-keyring-latest.deb
+          apt: deb="/tmp/ngcp-keyring-latest.deb"
+
+        - name: "Setup : Add RTPEngine repository into sources list"
+          apt_repository:
+            repo: deb https://deb.sipwise.com/spce/mr11.3.1 {{ hostvars[inventory_hostname].ansible_distribution_release }} main
+            state: present
+            filename: rtpengine
 
     - when: inventory_hostname in groups['all']
       block:
