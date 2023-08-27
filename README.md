@@ -1,7 +1,7 @@
-# Webitel v23.02
+# Webitel v23.05
 
 <!-- TOC -->
-* [Webitel v23.02](#webitel-v2302)
+* [Webitel v23.05](#webitel-v2305)
   * [Hosts configuration](#hosts-configuration)
   * [Webitel configuration](#webitel-configuration)
   * [Run Ansible playbook for Webitel](#run-ansible-playbook-for-webitel)
