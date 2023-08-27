@@ -1,0 +1,26 @@
+name: reviewdog
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  ansible-lint:
+    name: runner / ansible-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: ansible-lint github-check
+        uses: reviewdog/action-ansiblelint@v1
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-check
+          level: warning
+          ansiblelint_flags: "./*"

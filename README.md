@@ -1,14 +1,21 @@
-# Webitel v23.07
+<div align="center">
+  <h2>
+    Webitel v23.07
+  </h2>
+  
+  <a href="https://github.com/kirychukyurii/wansible/actions?query=workflow%3Alint+event%3Apush+branch%3Amain">
+    <img alt="GitHub Actions (lint)" src="https://github.com/kirychukyurii/wansible/workflows/lint/badge.svg?branch=main&event=push">
+  </a>
+</div>
 
 <!-- TOC -->
-* [Webitel v23.07](#webitel-v2307)
   * [Hosts configuration](#hosts-configuration)
   * [Webitel configuration](#webitel-configuration)
   * [Run Ansible playbook for Webitel](#run-ansible-playbook-for-webitel)
     * [Localhost deployment](#localhost-deployment)
     * [Singlehost deployment](#singlehost-deployment)
     * [Custom deployment](#custom-deployment)
-      * [Possible `webitel_services` values:](#possible-webitelservices-values)
+      * [Possible `webitel_services` values](#possible-webitelservices-values)
 <!-- TOC -->
 
 ## Hosts configuration
@@ -54,7 +61,7 @@ Before running playbook on a single host deployment please edit your inventory `
 
 Before running playbook with custom services definition please edit your inventory `inventories/production/custom.yml` and setup list of services (variable `webitel_services`) that would be installed.
 
-#### Possible `webitel_services` values:
+#### Possible `webitel_services` values
 | Name                   | Required | Comment                                                            | Limits                                                                                               |
 |------------------------|----------|--------------------------------------------------------------------|------------------------------------------------------------------------------------------------------|
 | `consul`               | true     | Install and configure Consul.                                      | Only one concurrent.                                                                                 |
