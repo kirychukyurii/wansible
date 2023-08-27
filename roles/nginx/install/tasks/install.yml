@@ -1,7 +1,14 @@
 ---
-- name: Install NGINX and webitel-www packages
+- name: Install NGINX and webitel frontend applications
   apt:
     name:
       - nginx
-      - webitel-www
+      - webitel-auth-app
+      - webitel-admin-app
+      - webitel-agent-workspace
+      - webitel-supervisor-workspace
+      - webitel-flow-diagram
+      - webitel-history
+      - webitel-audit-app
+      - webitel-web-widget
     update_cache: no
