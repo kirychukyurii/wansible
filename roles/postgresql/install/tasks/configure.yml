@@ -9,7 +9,7 @@
 
     - name: Enable other Webitel hosts to login
       blockinfile:
-        path: /etc/postgresql/14/main/pg_hba.conf
+        path: /etc/postgresql/15/main/pg_hba.conf
         marker: "# {mark} ANSIBLE MANAGED BLOCK - hosts"
         block: |
           {% for host in groups['all'] %}
