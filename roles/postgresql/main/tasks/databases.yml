@@ -22,32 +22,6 @@
   register: create_db
   become_user: postgres
 
-- name: Download database schema
-  ansible.builtin.get_url:
-    url: https://git.webitel.com/projects/WEP/repos/postgres/raw/{{ item }}?at=refs%2Ftags%2F{{ webitel_version }}
-    dest: /tmp/{{ item }}
-    mode: "0777"
-  become_user: postgres
-  with_items:
-    - webitel-db-schema.sql
-    - webitel-db-data.sql
-  when:
-    - create_db is changed
-    - webitel_version != 'dev'
-
-- name: Download DEV database schema
-  ansible.builtin.get_url:
-    url: https://git.webitel.com/projects/WEP/repos/postgres/raw/{{ item }}
-    dest: /tmp/{{ item }}
-    mode: "0777"
-  become_user: postgres
-  with_items:
-    - webitel-db-schema.sql
-    - webitel-db-data.sql
-  when:
-    - create_db is changed
-    - webitel_version == 'dev'
-
 - name: Restore database "webitel" from the file
   postgresql_db:
     name: webitel
@@ -55,16 +29,7 @@
     state: restore
     target: "{{ item }}"
   with_items:
-    - /tmp/webitel-db-schema.sql
-    - /tmp/webitel-db-data.sql
+    - /usr/share/postgresql/15/webitel/webitel-db-schema.sql
+    - /usr/share/postgresql/15/webitel/webitel-db-data.sql
   become_user: postgres
-  when: create_db is changed
-
-- name: Delete downloaded files
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: absent
-  with_items:
-    - /tmp/webitel-db-schema.sql
-    - /tmp/webitel-db-data.sql
   when: create_db is changed

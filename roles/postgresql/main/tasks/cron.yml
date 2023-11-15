@@ -1,16 +1,9 @@
 ---
-- name: Download pgsql database_helper script
-  ansible.builtin.get_url:
-    url: https://git.webitel.com/projects/WEP/repos/postgres/raw/database_helper.sql
-    dest: /var/lib/postgresql/cc_vacuum.sql
-    mode: "0777"
-  become_user: postgres
-
-- name: Creates a cron file under /etc/cron.d
+- name: Creates a cron file
   ansible.builtin.cron:
     name: psql daily script
     minute: "4"
     hour: "4"
     user: postgres
-    job: psql webitel < ~/database_helper.sql
+    job: psql webitel < /usr/share/postgresql/15/webitel/database_helper.sql
     cron_file: ansible_psql-database_helper
