@@ -1,11 +1,14 @@
 ---
 # Install a collection from Ansible Galaxy.
 collections:
-  - name: ansible.posix
-
   - name: ansible.utils
     source: https://galaxy.ansible.com
 
-  - name: community.rabbitmq
+  - name: ansible.posix
 
   - name: community.general
+
+  - name: community.rabbitmq
+
+  - name: community.postgresql
+
