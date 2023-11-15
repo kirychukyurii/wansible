@@ -1,8 +1,13 @@
 ---
-- name: Install NGINX and webitel frontend applications
+- name: Install NGINX and Webitel frontend applications
   ansible.builtin.apt:
     name:
       - nginx
+    update_cache: false
+
+- name: Install Webitel frontend applications
+  ansible.builtin.apt:
+    name:
       - webitel-auth-app
       - webitel-admin-app
       - webitel-agent-workspace
@@ -11,4 +16,5 @@
       - webitel-history
       - webitel-audit-app
       - webitel-web-widget
+      - webitel-crm
     update_cache: false
