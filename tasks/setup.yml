@@ -28,7 +28,7 @@
     - when: inventory_hostname in groups['rtpengine']
       block:
         - name: "Setup : Get RTPEngine public IP"
-          ipify_facts:
+          community.general.ipify_facts:
           register: rtpengine_public_ip
           until: rtpengine_public_ip is succeeded
           retries: 5
@@ -40,7 +40,7 @@
         - name: "Setup : Download ngcp-keyring-latest.deb"
           get_url: url="https://deb.sipwise.com/spce/ngcp-keyring-latest.deb" dest="/tmp/ngcp-keyring-latest.deb"
 
-        - name: Install ngcp-keyring-latest.deb
+        - name: "Setup : Install ngcp-keyring-latest.deb"
           apt: deb="/tmp/ngcp-keyring-latest.deb"
 
         - name: "Setup : Add RTPEngine repository into sources list"
@@ -124,8 +124,7 @@
 
         - name: "Setup : Add SignalWire FreeSWITCH repo"
           apt_repository:
-            repo: deb [signed-by=/usr/share/keyrings/signalwire-freeswitch-repo.gpg] https://freeswitch.signalwire.com/repo/deb/debian-release/ {{  hostvars[inventory_hostname].ansible_distribution_release
-              }} main
+            repo: deb [signed-by=/usr/share/keyrings/signalwire-freeswitch-repo.gpg] https://freeswitch.signalwire.com/repo/deb/debian-release/ {{ hostvars[inventory_hostname].ansible_distribution_release }} main
             state: present
             filename: freeswitch
             update_cache: false
@@ -188,30 +187,39 @@
     - when: inventory_hostname in groups['rabbitmq']
       block:
         - name: "Setup : Add rabbitmq apt-key"
-          apt_key:
-            url: https://github.com/rabbitmq/signing-keys/releases/download/2.0/rabbitmq-release-signing-key.asc
-            state: present
-
-        - name: "Setup : Add rabbitmq-erlang apt-key"
-          apt_key:
-            url: https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-erlang/gpg.E495BB49CC4BBE5B.key
-            state: present
-
-        - name: "Setup : Add rabbitmq-server apt-key"
-          apt_key:
-            url: https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-server/gpg.9F4587F226208342.key
-            state: present
+          ansible.builtin.get_url:
+            url: https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-server.9F4587F226208342.key
+            dest: /usr/share/keyrings/rabbitmq.9F4587F226208342.asc
 
         - name: "Setup : Add rabbitmq repository into sources list"
-          apt_repository:
-            repo: deb https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-server/deb/debian {{ hostvars[inventory_hostname].ansible_distribution_release }} main
+          ansible.builtin.apt_repository:
+            repo: deb [arch=amd64 signed-by=/usr/share/keyrings/rabbitmq.9F4587F226208342.asc] https://ppa1.novemberain.com/rabbitmq/rabbitmq-server/deb/debian {{ hostvars[inventory_hostname].ansible_distribution_release }} main
             state: present
             filename: rabbitmq
             update_cache: false
 
+        - name: "Setup : Add rabbitmq repository mirror into sources list"
+          ansible.builtin.apt_repository:
+            repo: deb [arch=amd64 signed-by=/usr/share/keyrings/rabbitmq.9F4587F226208342.asc] https://ppa2.novemberain.com/rabbitmq/rabbitmq-server/deb/debian {{ hostvars[inventory_hostname].ansible_distribution_release }} main
+            state: present
+            filename: rabbitmq
+            update_cache: false
+
+        - name: "Setup : Add rabbitmq-erlang apt-key"
+          ansible.builtin.get_url:
+            url: https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-erlang.E495BB49CC4BBE5B.key
+            dest: /usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.asc
+
         - name: "Setup : Add rabbitmq-erlang repository into sources list"
-          apt_repository:
-            repo: deb https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-erlang/deb/debian {{ hostvars[inventory_hostname].ansible_distribution_release }} main
+          ansible.builtin.apt_repository:
+            repo: deb [arch=amd64 signed-by=/usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.asc] https://ppa1.novemberain.com/rabbitmq/rabbitmq-erlang/deb/debian {{ hostvars[inventory_hostname].ansible_distribution_release }} main
+            state: present
+            filename: rabbitmq-erlang
+            update_cache: false
+
+        - name: "Setup : Add rabbitmq-erlang repository mirror into sources list"
+          ansible.builtin.apt_repository:
+            repo: deb [arch=amd64 signed-by=/usr/share/keyrings/rabbitmq.E495BB49CC4BBE5B.asc] https://ppa2.novemberain.com/rabbitmq/rabbitmq-erlang/deb/debian {{ hostvars[inventory_hostname].ansible_distribution_release }} main
             state: present
             filename: rabbitmq-erlang
             update_cache: false
@@ -226,7 +234,7 @@
             - "{{ locales_gen }}"
 
         - name: "Setup : Apply sysctl (all.disable_ipv6)"
-          sysctl:
+          ansible.posix.sysctl:
             name: net.ipv6.conf.all.disable_ipv6
             value: "1"
             sysctl_set: true
@@ -234,7 +242,7 @@
             reload: true
 
         - name: "Setup : Apply sysctl (default.disable_ipv6)"
-          sysctl:
+          ansible.posix.sysctl:
             name: net.ipv6.conf.default.disable_ipv6
             value: "1"
             sysctl_set: true
@@ -242,7 +250,7 @@
             reload: true
 
         - name: "Setup : Apply sysctl (lo.disable_ipv6)"
-          sysctl:
+          ansible.posix.sysctl:
             name: net.ipv6.conf.lo.disable_ipv6
             value: "1"
             sysctl_set: true
@@ -250,7 +258,7 @@
             reload: true
 
         - name: "Setup : Apply sysctl (fs.file-max)"
-          sysctl:
+          ansible.posix.sysctl:
             name: fs.file-max
             value: "1000000"
             sysctl_set: true
@@ -258,7 +266,7 @@
             reload: true
 
         - name: "Setup : Apply sysctl (vm.max_map_count)"
-          sysctl:
+          ansible.posix.sysctl:
             name: vm.max_map_count
             value: "262144"
             sysctl_set: true

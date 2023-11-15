@@ -5,7 +5,7 @@
       tags:
         - postgresql_configure
 
-    - ansible.builtin.include_tasks: databases.yml
+    - ansible.builtin.include_tasks: database.yml
       tags:
         - postgresql_databases
 
