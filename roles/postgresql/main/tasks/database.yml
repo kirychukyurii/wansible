@@ -2,28 +2,28 @@
 - when: groups['postgresql'] | length > 1
   block:
     - name: Create "replication" user, set password, grant privs
-      postgresql_user:
+      community.postgresql.postgresql_user:
         name: wbtrepl
         password: password
         role_attr_flags: REPLICATION
       become_user: postgres
 
 - name: Create "opensips" user, set password, grant privs
-  postgresql_user:
+  community.postgresql.postgresql_user:
     name: opensips
     password: webitel
     role_attr_flags: SUPERUSER
   become_user: postgres
 
 - name: Create a new database with name "webitel"
-  postgresql_db:
+  community.postgresql.postgresql_db:
     name: webitel
     owner: opensips
   register: create_db
   become_user: postgres
 
 - name: Restore database "webitel" from the file
-  postgresql_db:
+  community.postgresql.postgresql_db:
     name: webitel
     owner: opensips
     state: restore
