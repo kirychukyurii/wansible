@@ -1,5 +1,6 @@
 ---
-- hosts: all
+- name: "Play : Deploy Webitel services"
+  hosts: all
   become: true
   become_user: root
   any_errors_fatal: true
