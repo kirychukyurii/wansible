@@ -2,7 +2,7 @@
 - when: groups['postgresql'] | length > 1
   block:
     - name: Enable replication user to login
-      blockinfile:
+      ansible.builtin.blockinfile:
         path: /etc/postgresql/15/main/pg_hba.conf
         marker: "# {mark} ANSIBLE MANAGED BLOCK - replication"
         block: |
@@ -11,8 +11,8 @@
           {% endfor %}
 
 - name: Reload systemd
-  systemd:
-    name: "postgresql.service"
-    enabled: yes
+  ansible.builtin.systemd:
+    name: postgresql.service
+    enabled: true
     daemon_reload: true
     state: restarted

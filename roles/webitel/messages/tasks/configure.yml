@@ -1,16 +1,16 @@
 ---
 - name: Ensure bootstrapped file exists
-  copy:
+  ansible.builtin.copy:
     content: ""
     dest: /opt/webitel/.bootstrap
-    force: no
+    force: false
 
 - name: Read bootstrapped state. Ensure /opt/webitel/.bootstrap contains webitel_messages
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /opt/webitel/.bootstrap
-    regexp: "^webitel_messages"
+    regexp: ^webitel_messages
     state: absent
-  check_mode: yes
+  check_mode: true
   changed_when: false
   ignore_errors: true
   register: bootstrap_state
@@ -18,10 +18,10 @@
 - when: not bootstrap_state.found
   block:
     - name: Copy webitel systemd files
-      copy:
-        src: '/opt/webitel/etc/systemd/system/{{ item }}'
+      ansible.builtin.copy:
+        src: /opt/webitel/etc/systemd/system/{{ item }}
         dest: /etc/systemd/system/
-        remote_src: yes
+        remote_src: true
       with_items:
         - messages-bot.service
         - messages-srv.service
@@ -29,37 +29,37 @@
         - ansible_service_mgr == "systemd"
 
     - name: Change messages-bot chat URL
-      replace:
-        path: '/etc/systemd/system/messages-bot.service'
-        after: '--site_url="'
-        before: '/chat"'
-        regexp: '^(.+)$'
-        replace: "https://{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+      ansible.builtin.replace:
+        path: /etc/systemd/system/messages-bot.service
+        after: --site_url="
+        before: /chat"
+        regexp: ^(.+)$
+        replace: https://{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
 
     - name: URL for letsencrypt
-      replace:
-        path: '/etc/systemd/system/messages-bot.service'
-        after: '--site_url="'
-        before: '/chat"'
-        regexp: '^(.+)$'
-        replace: 'https://{{ nginx_site_name }}'
+      ansible.builtin.replace:
+        path: /etc/systemd/system/messages-bot.service
+        after: --site_url="
+        before: /chat"
+        regexp: ^(.+)$
+        replace: https://{{ nginx_site_name }}
       when: nginx_letsencrypt | bool
 
     - when: groups['all'] | length > 1
       block:
         - name: Change messages-bot IP
-          replace:
-            path: '/etc/systemd/system/messages-bot.service'
-            after: '--address='
-            before: ':10031'
-            regexp: '^(.+)$'
+          ansible.builtin.replace:
+            path: /etc/systemd/system/messages-bot.service
+            after: --address=
+            before: :10031
+            regexp: ^(.+)$
             replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
 
     - name: Enable webitel at startup (systemd)
-      systemd:
-        name: '{{ item }}'
-        enabled: yes
-        daemon_reload: yes
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        enabled: true
+        daemon_reload: true
         state: restarted
       with_items:
         - messages-bot.service
@@ -68,7 +68,7 @@
         - ansible_service_mgr == "systemd"
 
     - name: Insert info into bootstrapped state file
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /opt/webitel/.bootstrap
-        line: "webitel_messages"
+        line: webitel_messages
         insertbefore: BOF

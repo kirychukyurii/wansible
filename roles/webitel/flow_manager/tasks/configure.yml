@@ -1,16 +1,16 @@
 ---
 - name: Ensure bootstrapped file exists
-  copy:
+  ansible.builtin.copy:
     content: ""
     dest: /opt/webitel/.bootstrap
-    force: no
+    force: false
 
 - name: Read bootstrapped state. Ensure /opt/webitel/.bootstrap contains webitel_flow_manager
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /opt/webitel/.bootstrap
-    regexp: "^webitel_flow_manager"
+    regexp: ^webitel_flow_manager
     state: absent
-  check_mode: yes
+  check_mode: true
   changed_when: false
   ignore_errors: true
   register: bootstrap_state
@@ -18,10 +18,10 @@
 - when: not bootstrap_state.found
   block:
     - name: Copy webitel systemd files
-      copy:
-        src: "/opt/webitel/etc/systemd/system/flow_manager.service"
+      ansible.builtin.copy:
+        src: /opt/webitel/etc/systemd/system/flow_manager.service
         dest: /etc/systemd/system/
-        remote_src: yes
+        remote_src: true
       when:
         - ansible_service_mgr == "systemd"
 
@@ -30,59 +30,61 @@
         - when: inventory_hostname not in groups['webitel_storage']
           block:
             - name: Copy the pre-signed cert from master to flow_manager
-              copy: src=buffer/key.pem dest=/opt/storage/
-
+              ansible.builtin.copy:
+                src: buffer/key.pem
+                dest: /opt/storage/
+                cmd: ""
         - name: Change Consul IP
-          replace:
-            path: '/etc/systemd/system/flow_manager.service'
-            after: '-consul '
-            before: ':8500'
-            regexp: '^(.+)$'
-            replace: "{{ hostvars[groups[ 'consul' ][0]]['ansible_default_ipv4']['address'] }}"
+          ansible.builtin.replace:
+            path: /etc/systemd/system/flow_manager.service
+            after: "-consul "
+            before: :8500
+            regexp: ^(.+)$
+            replace: "{{ hostvars[groups['consul'][0]]['ansible_default_ipv4']['address'] }}"
 
         - name: Change GRPC IP
-          replace:
-            path: '/etc/systemd/system/flow_manager.service'
-            after: '-grpc_addr '
-            before: ' '
-            regexp: '^(.+)$'
+          ansible.builtin.replace:
+            path: /etc/systemd/system/flow_manager.service
+            after: "-grpc_addr "
+            before: " "
+            regexp: ^(.+)$
             replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
 
         - name: Change ESL IP
-          replace:
-            path: '/etc/systemd/system/flow_manager.service'
-            after: '-esl_host '
-            before: ' '
-            regexp: '^(.+)$'
+          ansible.builtin.replace:
+            path: /etc/systemd/system/flow_manager.service
+            after: "-esl_host "
+            before: " "
+            regexp: ^(.+)$
             replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
 
         - name: Change RabbitMQ IP
-          replace:
-            path: '/etc/systemd/system/flow_manager.service'
-            after: '-amqp amqp://webitel:webitel@'
-            before: ':5672'
-            regexp: '^(.+)$'
-            replace: "{{ hostvars[groups[ 'rabbitmq' ][0]]['ansible_default_ipv4']['address'] }}"
+          ansible.builtin.replace:
+            path: /etc/systemd/system/flow_manager.service
+            after: -amqp amqp://webitel:webitel@
+            before: :5672
+            regexp: ^(.+)$
+            replace: "{{ hostvars[groups['rabbitmq'][0]]['ansible_default_ipv4']['address'] }}"
 
         - name: Change PostgreSQL IP
-          replace:
-            path: '/etc/systemd/system/flow_manager.service'
-            after: '-data_source postgres://opensips:webitel@'
-            before: ':5432'
-            regexp: '^(.+)$'
-            replace: "{{ hostvars[groups[ 'postgresql_main' ][0]]['ansible_default_ipv4']['address'] }}"
+          ansible.builtin.replace:
+            path: /etc/systemd/system/flow_manager.service
+            after: -data_source postgres://opensips:webitel@
+            before: :5432
+            regexp: ^(.+)$
+            replace: "{{ hostvars[groups['postgresql_main'][0]]['ansible_default_ipv4']['address'] }}"
 
     - name: Enable webitel at startup (systemd)
-      systemd:
-        name: "flow_manager.service"
-        enabled: yes
-        daemon_reload: yes
+      ansible.builtin.systemd:
+        name: flow_manager.service
+        enabled: true
+        daemon_reload: true
         state: restarted
       when:
         - ansible_service_mgr == "systemd"
 
     - name: Insert info into bootstrapped state file
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /opt/webitel/.bootstrap
-        line: "webitel_flow_manager"
+        line: webitel_flow_manager
         insertbefore: BOF

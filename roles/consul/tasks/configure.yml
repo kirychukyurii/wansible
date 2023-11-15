@@ -1,48 +1,48 @@
 ---
 - name: Add Consul group
-  group:
+  ansible.builtin.group:
     name: consul
     state: present
 
 - name: Add Consul user
-  user:
+  ansible.builtin.user:
     name: consul
-    comment: "Consul user"
+    comment: Consul user
     group: consul
     home: /etc/consul.d
     shell: /bin/false
     system: true
 
 - name: Create consul log directory
-  file:
+  ansible.builtin.file:
     dest: /var/consul
     state: directory
     owner: consul
     group: consul
 
 - name: Create consul config.json
-  template:
+  ansible.builtin.template:
     src: templates/consul_config.json.j2
     dest: /etc/consul.d/config.json
     owner: consul
     group: consul
-    mode: 0644
+    mode: "0644"
 
 - name: Create systemd script
-  template:
+  ansible.builtin.template:
     src: templates/consul_systemd.service.j2
     dest: /lib/systemd/system/consul.service
     owner: root
     group: root
-    mode: 0644
+    mode: "0644"
   register: systemd_unit
   when:
     - ansible_service_mgr == "systemd"
 
 - name: Enable consul at startup (systemd)
-  systemd:
+  ansible.builtin.systemd:
     name: consul
-    enabled: yes
+    enabled: true
     state: restarted
     daemon_reload: true
   when:

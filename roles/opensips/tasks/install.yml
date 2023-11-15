@@ -1,6 +1,6 @@
 ---
 - name: Install OpenSIPS packages
-  apt:
+  ansible.builtin.apt:
     name:
       - opensips
       - opensips-http-modules
@@ -12,12 +12,12 @@
       - opensips-tlsmgm-module
       - opensips-xmlrpc-module
     state: latest
-    install_recommends: no
-    update_cache: no
+    install_recommends: false
+    update_cache: false
 
 - name: Enable OpenSIPS at startup (systemd)
-  systemd:
+  ansible.builtin.systemd:
     name: opensips
-    enabled: yes
+    enabled: true
   when:
     - ansible_service_mgr == "systemd"

@@ -1,8 +1,8 @@
 ---
 - name: Install webitel_storage
-  apt:
+  ansible.builtin.apt:
     name:
       - webitel-storage
     state: latest
-    update_cache: no
-    install_recommends: no
+    update_cache: false
+    install_recommends: false

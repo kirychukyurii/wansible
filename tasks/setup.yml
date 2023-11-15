@@ -8,7 +8,7 @@
           file:
             path: /etc/apt/auth.conf.d
             state: directory
-            mode: '0755'
+            mode: "0755"
 
         - name: "Setup : Install all necessary software with APT"
           apt:
@@ -38,9 +38,7 @@
             - hostvars[inventory_hostname]['ansible_default_ipv4']['address'] is ansible.utils.private
 
         - name: "Setup : Download ngcp-keyring-latest.deb"
-          get_url:
-            url="https://deb.sipwise.com/spce/ngcp-keyring-latest.deb"
-            dest="/tmp/ngcp-keyring-latest.deb"
+          get_url: url="https://deb.sipwise.com/spce/ngcp-keyring-latest.deb" dest="/tmp/ngcp-keyring-latest.deb"
 
         - name: Install ngcp-keyring-latest.deb
           apt: deb="/tmp/ngcp-keyring-latest.deb"
@@ -56,8 +54,8 @@
         - name: "Setup : Fetch password protected Webitel GPG key"
           get_url:
             url: http://deb.webitel.com/webitel-repo.gpg
-            username: '{{ webitel_repository_user }}'
-            password: '{{ webitel_repository_password }}'
+            username: "{{ webitel_repository_user }}"
+            password: "{{ webitel_repository_password }}"
             dest: /usr/share/keyrings/webitel-repo.gpg
 
         - name: "Setup : Create apt auth.conf.d Webitel file"
@@ -65,29 +63,31 @@
             dest: /etc/apt/auth.conf.d/webitel.conf
             owner: root
             group: root
-            mode: '0700'
-            content: 'machine http://deb.webitel.com login {{ webitel_repository_user }} password {{ webitel_repository_password }}'
+            mode: "0700"
+            content: machine http://deb.webitel.com login {{ webitel_repository_user }} password {{ webitel_repository_password }}
 
         - name: "Setup : Add Webitel repo"
           apt_repository:
-            repo: deb [signed-by=/usr/share/keyrings/webitel-repo.gpg] http://deb.webitel.com/debian/ {{ hostvars[inventory_hostname].ansible_distribution_release }} main
+            repo: deb [signed-by=/usr/share/keyrings/webitel-repo.gpg] http://deb.webitel.com/debian/ {{ hostvars[inventory_hostname].ansible_distribution_release
+              }} main
             state: present
             filename: webitel
-            update_cache: 'no'
+            update_cache: no
 
         - name: "Setup : Add Webitel releases repo"
           apt_repository:
-            repo: deb [signed-by=/usr/share/keyrings/webitel-repo.gpg] http://deb.webitel.com/debian/ {{ hostvars[inventory_hostname].ansible_distribution_release }} {{ webitel_version }}-releases
+            repo: deb [signed-by=/usr/share/keyrings/webitel-repo.gpg] http://deb.webitel.com/debian/ {{ hostvars[inventory_hostname].ansible_distribution_release
+              }} {{ webitel_version }}-releases
             state: present
             filename: webitel
-            update_cache: 'no'
+            update_cache: no
           when: webitel_version != 'dev'
 
     - when: inventory_hostname in groups['consul']
       block:
         - name: "Setup : Import HashiCorp GPG signing key"
           apt_key:
-            url: "https://apt.releases.hashicorp.com/gpg"
+            url: https://apt.releases.hashicorp.com/gpg
             state: present
             validate_certs: false
           register: _add_apt_key
@@ -99,7 +99,7 @@
           apt_repository:
             repo: deb [arch=amd64] https://apt.releases.hashicorp.com {{ hostvars[inventory_hostname].ansible_distribution_release }} main
             state: present
-            update_cache: 'no'
+            update_cache: no
           register: _update_apt_cache
           until: _update_apt_cache is succeeded
           retries: 5
@@ -111,7 +111,7 @@
           get_url:
             url: https://freeswitch.signalwire.com/repo/deb/debian-release/signalwire-freeswitch-repo.gpg
             username: signalwire
-            password: '{{ freeswitch_signalwire_key }}'
+            password: "{{ freeswitch_signalwire_key }}"
             dest: /usr/share/keyrings/signalwire-freeswitch-repo.gpg
 
         - name: "Setup : Create apt auth.conf.d FreeSWITCH file"
@@ -119,15 +119,16 @@
             dest: /etc/apt/auth.conf.d/freeswitch.conf
             owner: root
             group: root
-            mode: '0700'
-            content: 'machine freeswitch.signalwire.com login signalwire password {{ freeswitch_signalwire_key }}'
+            mode: "0700"
+            content: machine freeswitch.signalwire.com login signalwire password {{ freeswitch_signalwire_key }}
 
         - name: "Setup : Add SignalWire FreeSWITCH repo"
           apt_repository:
-            repo: deb [signed-by=/usr/share/keyrings/signalwire-freeswitch-repo.gpg] https://freeswitch.signalwire.com/repo/deb/debian-release/ {{  hostvars[inventory_hostname].ansible_distribution_release }} main
+            repo: deb [signed-by=/usr/share/keyrings/signalwire-freeswitch-repo.gpg] https://freeswitch.signalwire.com/repo/deb/debian-release/ {{  hostvars[inventory_hostname].ansible_distribution_release
+              }} main
             state: present
             filename: freeswitch
-            update_cache: 'no'
+            update_cache: no
 
     - when: inventory_hostname in groups['grafana'] and grafana_enable | bool
       block:
@@ -141,22 +142,22 @@
             repo: deb [signed-by=/usr/share/keyrings/grafana.key] https://apt.grafana.com stable main
             state: present
             filename: grafana
-            update_cache: 'no'
+            update_cache: no
 
     - when: inventory_hostname in groups['opensips']
       block:
         - name: "Setup : Add OpenSIPS apt-key"
           apt_key:
             keyserver: keyserver.ubuntu.com
-            id: 049AD65B
+            id: "049AD65B"
             state: present
 
         - name: "Setup : Add OpenSIPS repository into sources list"
           apt_repository:
-            repo:  deb https://apt.opensips.org {{ hostvars[inventory_hostname].ansible_distribution_release }} {{ opensips_version }}-releases
+            repo: deb https://apt.opensips.org {{ hostvars[inventory_hostname].ansible_distribution_release }} {{ opensips_version }}-releases
             state: present
             filename: opensips
-            update_cache: 'no'
+            update_cache: no
 
     - when: inventory_hostname in groups['postgresql']
       block:
@@ -172,17 +173,17 @@
 
         - name: "Setup : Add PostgreSQL repository into sources list"
           apt_repository:
-            repo:  deb http://apt.postgresql.org/pub/repos/apt/ {{ hostvars[inventory_hostname].ansible_distribution_release }}-pgdg main
+            repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ hostvars[inventory_hostname].ansible_distribution_release }}-pgdg main
             state: present
             filename: postgresql
-            update_cache: 'no'
+            update_cache: no
 
         - name: "Setup : Add TimescaleDB repository into sources list"
           apt_repository:
             repo: deb https://packagecloud.io/timescale/timescaledb/debian/ {{ hostvars[inventory_hostname].ansible_distribution_release }} main
             state: present
             filename: timescaledb
-            update_cache: 'no'
+            update_cache: no
 
     - when: inventory_hostname in groups['rabbitmq']
       block:
@@ -206,28 +207,28 @@
             repo: deb https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-server/deb/debian {{ hostvars[inventory_hostname].ansible_distribution_release }} main
             state: present
             filename: rabbitmq
-            update_cache: 'no'
+            update_cache: no
 
         - name: "Setup : Add rabbitmq-erlang repository into sources list"
           apt_repository:
             repo: deb https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-erlang/deb/debian {{ hostvars[inventory_hostname].ansible_distribution_release }} main
             state: present
             filename: rabbitmq-erlang
-            update_cache: 'no'
+            update_cache: no
 
     - when: inventory_hostname in groups['all']
       block:
         - name: "Setup : Generate additional locales"
           locale_gen:
-            name: '{{ item }}'
+            name: "{{ item }}"
             state: present
           with_items:
-            - '{{ locales_gen }}'
+            - "{{ locales_gen }}"
 
         - name: "Setup : Apply sysctl (all.disable_ipv6)"
           sysctl:
             name: net.ipv6.conf.all.disable_ipv6
-            value: '1'
+            value: "1"
             sysctl_set: yes
             state: present
             reload: yes
@@ -235,7 +236,7 @@
         - name: "Setup : Apply sysctl (default.disable_ipv6)"
           sysctl:
             name: net.ipv6.conf.default.disable_ipv6
-            value: '1'
+            value: "1"
             sysctl_set: yes
             state: present
             reload: yes
@@ -243,7 +244,7 @@
         - name: "Setup : Apply sysctl (lo.disable_ipv6)"
           sysctl:
             name: net.ipv6.conf.lo.disable_ipv6
-            value: '1'
+            value: "1"
             sysctl_set: yes
             state: present
             reload: yes
@@ -251,7 +252,7 @@
         - name: "Setup : Apply sysctl (fs.file-max)"
           sysctl:
             name: fs.file-max
-            value: '1000000'
+            value: "1000000"
             sysctl_set: yes
             state: present
             reload: yes
@@ -259,12 +260,12 @@
         - name: "Setup : Apply sysctl (vm.max_map_count)"
           sysctl:
             name: vm.max_map_count
-            value: '262144'
+            value: "262144"
             sysctl_set: yes
             state: present
             reload: yes
 
         - name: "Setup : Updates apt cache & upgrades dist"
           apt:
-            upgrade: 'yes'
-            update_cache: 'yes'
+            upgrade: yes
+            update_cache: yes

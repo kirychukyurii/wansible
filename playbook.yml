@@ -4,9 +4,9 @@
   become_user: root
   any_errors_fatal: true
   pre_tasks:
-    - include_tasks: tasks/debian.yml
-    - include_tasks: tasks/preflight.yml
-    - include_tasks: tasks/setup.yml
+    - ansible.builtin.include_tasks: tasks/debian.yml
+    - ansible.builtin.include_tasks: tasks/preflight.yml
+    - ansible.builtin.include_tasks: tasks/setup.yml
   roles:
     - webitel/common
     - consul
@@ -26,4 +26,4 @@
     - webitel/flow_manager
     - webitel/messages
   post_tasks:
-    - include_tasks: tasks/finish.yml
+    - ansible.builtin.include_tasks: tasks/finish.yml

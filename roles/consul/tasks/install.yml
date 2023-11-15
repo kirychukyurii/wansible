@@ -1,7 +1,7 @@
 ---
 - name: Install Consul
-  package:
-    name: "consul"
+  ansible.builtin.package:
+    name: consul
   register: _install_packages
   until: _install_packages is succeeded
   retries: 5

@@ -1,8 +1,8 @@
 ---
 - name: Install grafana packages
-  apt:
+  ansible.builtin.apt:
     name:
       - grafana
     state: latest
-    install_recommends: no
-    update_cache: no
+    install_recommends: false
+    update_cache: false

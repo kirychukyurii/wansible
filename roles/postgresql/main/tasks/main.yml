@@ -1,14 +1,14 @@
 ---
 - when: inventory_hostname in groups['postgresql_main']
   block:
-    - include_tasks: configure.yml
+    - ansible.builtin.include_tasks: configure.yml
       tags:
         - postgresql_configure
 
-    - include_tasks: databases.yml
+    - ansible.builtin.include_tasks: databases.yml
       tags:
         - postgresql_databases
 
-    - include_tasks: cron.yml
+    - ansible.builtin.include_tasks: cron.yml
       tags:
         - postgresql_cron

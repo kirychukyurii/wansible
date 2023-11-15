@@ -1,10 +1,10 @@
 ---
 - when: inventory_hostname in groups['postgresql']
   block:
-    - include_tasks: install.yml
+    - ansible.builtin.include_tasks: install.yml
       tags:
         - postgresql_install
 
-    - include_tasks: configure.yml
+    - ansible.builtin.include_tasks: configure.yml
       tags:
         - postgresql_configure

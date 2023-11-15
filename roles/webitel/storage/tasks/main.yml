@@ -1,16 +1,20 @@
 ---
 - when: inventory_hostname in groups['webitel_storage']
   block:
-    - include_tasks: install.yml
+    - ansible.builtin.include_tasks: install.yml
       tags:
         - webitel_storage_install
 
-    - include_tasks: configure.yml
+    - ansible.builtin.include_tasks: configure.yml
       tags:
         - webitel_storage_configure
 
     - name: Fetch the pre-signed cert from storage to master
-      run_once: yes
-      fetch: src=/opt/storage/key.pem dest=buffer/ flat=yes
+      run_once: true
+      ansible.builtin.fetch:
+        src: /opt/storage/key.pem
+        dest: buffer/
+        flat: "yes"
+        cmd: ""
       tags:
         - webitel_flow_manager_configure

@@ -21,6 +21,6 @@
         - name: "Finish : All things done"
           ansible.builtin.debug:
             msg:
-              - "A license is given for the unique installation."
+              - A license is given for the unique installation.
               - "To receive the license, you need to copy an identifier of the server bellow and create a request on the Support Portal:"
               - "{{ webitel_server_key.content }}"

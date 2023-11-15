@@ -1,6 +1,6 @@
 ---
 - name: Install FreeSWITCH packages
-  apt:
+  ansible.builtin.apt:
     name:
       - freeswitch
       - freeswitch-mod-av
@@ -40,5 +40,5 @@
       - freeswitch-mod-grpc
       - freeswitch-mod-google-transcribe
     state: latest
-    update_cache: no
-    install_recommends: no
+    update_cache: false
+    install_recommends: false

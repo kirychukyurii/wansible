@@ -1,8 +1,8 @@
 ---
-- include_tasks: install.yml
+- ansible.builtin.include_tasks: install.yml
   tags:
     - webitel_common_install
 
-- include_tasks: configure.yml
+- ansible.builtin.include_tasks: configure.yml
   tags:
     - webitel_common_configure

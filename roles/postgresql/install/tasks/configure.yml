@@ -4,11 +4,11 @@
     - name: Configure DBs to listen on ip address
       postgresql_set:
         name: listen_addresses
-        value: "localhost,{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+        value: localhost,{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
       become_user: postgres
 
     - name: Enable other Webitel hosts to login
-      blockinfile:
+      ansible.builtin.blockinfile:
         path: /etc/postgresql/15/main/pg_hba.conf
         marker: "# {mark} ANSIBLE MANAGED BLOCK - hosts"
         block: |

@@ -1,9 +1,9 @@
 ---
-- name: pgpass for non interactive logins to the other node
-  blockinfile:
+- name: Pgpass for non interactive logins to the other node
+  ansible.builtin.blockinfile:
     path: /var/lib/postgresql/15/.pgpass
-    create: yes
-    mode: 0600
+    create: true
+    mode: "0600"
     block: |
       # hostname:port:database:username:password
       {% for host in groups['postgresql_main'] %}
@@ -12,32 +12,32 @@
   become_user: postgres
 
 - name: Stop database
-  systemd:
+  ansible.builtin.systemd:
     state: stopped
     name: postgresql
 
 - name: Remove data
-  file:
+  ansible.builtin.file:
     state: absent
-    path: "/var/lib/postgresql/15/main/"
+    path: /var/lib/postgresql/15/main/
   become_user: postgres
 
 - name: Check if database is already initialized
-  stat:
-    path: '/var/lib/postgresql/15/main/PG_VERSION'
+  ansible.builtin.stat:
+    path: /var/lib/postgresql/15/main/PG_VERSION
   register: init_status
   become_user: postgres
 
 - name: Initialize the slave database
-  shell: "PGPASSFILE='/var/lib/postgresql/15/.pgpass' pg_basebackup -h {{ hostvars[item]['ansible_default_ipv4']['address'] }} -p 5432 -U wbtrepl -D /var/lib/postgresql/15/main/ -Fp -Xs -R -P"
+  ansible.builtin.command: PGPASSFILE='/var/lib/postgresql/15/.pgpass' pg_basebackup -h {{ hostvars[item]['ansible_default_ipv4']['address'] }} -p 5432 -U wbtrepl
+    -D /var/lib/postgresql/15/main/ -Fp -Xs -R -P
   become_user: postgres
   with_items: "{{ groups[ 'postgresql_main' ] }}"
   when: init_status.stat.exists == False
 
 - name: Start database
-  systemd:
-    name: "postgresql.service"
-    enabled: yes
+  ansible.builtin.systemd:
+    name: postgresql.service
+    enabled: true
     daemon_reload: true
     state: restarted
-

@@ -1,10 +1,10 @@
 ---
 - when: inventory_hostname in groups['webitel_messages']
   block:
-    - include_tasks: install.yml
+    - ansible.builtin.include_tasks: install.yml
       tags:
         - webitel_messages_install
 
-    - include_tasks: configure.yml
+    - ansible.builtin.include_tasks: configure.yml
       tags:
         - webitel_messages_configure

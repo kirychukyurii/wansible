@@ -1,17 +1,17 @@
 ---
 - name: Ensure bootstrapped file exists
-  copy:
+  ansible.builtin.copy:
     content: ""
     dest: /opt/webitel/.bootstrap
-    force: no
+    force: false
 
 - name: Read bootstrapped state. Ensure /opt/webitel/.bootstrap contains webitel-common
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /opt/webitel/.bootstrap
-    regexp: "^webitel-common"
+    regexp: ^webitel-common
     state: absent
     create: true
-  check_mode: yes
+  check_mode: true
   changed_when: false
   ignore_errors: true
   register: bootstrap_state
@@ -19,58 +19,58 @@
 - when: not bootstrap_state.found
   block:
     - name: Copy default etc file
-      copy:
+      ansible.builtin.copy:
         src: /opt/webitel/etc/default/webitel
         dest: /etc/default/webitel
-        remote_src: yes
+        remote_src: true
 
     - name: Change SIP IP
-      replace:
-        path: "/etc/default/webitel"
-        regexp: '(1\.1\.1\.1)'
+      ansible.builtin.replace:
+        path: /etc/default/webitel
+        regexp: (1\.1\.1\.1)
         replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
 
     - when: groups['all'] | length > 1
       block:
         - name: Change Consul IP
-          lineinfile:
-            path: '/etc/default/webitel'
+          ansible.builtin.lineinfile:
+            path: /etc/default/webitel
             state: present
-            regexp: '^MICRO_REGISTRY_ADDRESS='
-            line: "MICRO_REGISTRY_ADDRESS={{ hostvars[groups[ 'consul' ][0]]['ansible_default_ipv4']['address'] }}"
+            regexp: ^MICRO_REGISTRY_ADDRESS=
+            line: MICRO_REGISTRY_ADDRESS={{ hostvars[groups['consul'][0]]['ansible_default_ipv4']['address'] }}
 
         - name: Change RabbitMQ IP
-          replace:
-            path: '/etc/default/webitel'
-            after: 'amqp://webitel:webitel@'
-            before: ':5672'
-            regexp: '^(.+)$'
-            replace: "{{ hostvars[groups[ 'rabbitmq' ][0]]['ansible_default_ipv4']['address'] }}"
+          ansible.builtin.replace:
+            path: /etc/default/webitel
+            after: amqp://webitel:webitel@
+            before: :5672
+            regexp: ^(.+)$
+            replace: "{{ hostvars[groups['rabbitmq'][0]]['ansible_default_ipv4']['address'] }}"
 
         - name: Change PostgreSQL IP
-          replace:
-            path: '/etc/default/webitel'
-            after: 'postgres://opensips:webitel@'
-            before: ':5432'
-            regexp: '^(.+)$'
-            replace: "{{ hostvars[groups[ 'postgresql_main' ][0]]['ansible_default_ipv4']['address'] }}"
+          ansible.builtin.replace:
+            path: /etc/default/webitel
+            after: postgres://opensips:webitel@
+            before: :5432
+            regexp: ^(.+)$
+            replace: "{{ hostvars[groups['postgresql_main'][0]]['ansible_default_ipv4']['address'] }}"
 
         - name: Change OpenSIPs MI IP
-          lineinfile:
-            path: '/etc/default/webitel'
+          ansible.builtin.lineinfile:
+            path: /etc/default/webitel
             state: present
-            regexp: '^OPENSIPS_MI_ADDRESS='
-            line: "OPENSIPS_MI_ADDRESS=http://{{ hostvars[groups[ 'opensips' ][0]]['ansible_default_ipv4']['address'] }}:8000/mi"
+            regexp: ^OPENSIPS_MI_ADDRESS=
+            line: OPENSIPS_MI_ADDRESS=http://{{ hostvars[groups['opensips'][0]]['ansible_default_ipv4']['address'] }}:8000/mi
 
         - name: Change OpenSIPs IP
-          lineinfile:
-            path: '/etc/default/webitel'
+          ansible.builtin.lineinfile:
+            path: /etc/default/webitel
             state: present
-            regexp: '^OPENSIPS_SIP_ADDRESS='
-            line: "OPENSIPS_SIP_ADDRESS={{ hostvars[groups[ 'opensips' ][0]]['ansible_default_ipv4']['address'] }}"
+            regexp: ^OPENSIPS_SIP_ADDRESS=
+            line: OPENSIPS_SIP_ADDRESS={{ hostvars[groups['opensips'][0]]['ansible_default_ipv4']['address'] }}
 
     - name: Insert info into bootstrapped state file
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: /opt/webitel/.bootstrap
-        line: "webitel-common"
+        line: webitel-common
         insertbefore: BOF

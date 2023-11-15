@@ -1,14 +1,14 @@
 ---
 - name: Create cache directory
-  file:
+  ansible.builtin.file:
     dest: /var/cache/freeswitch
     state: directory
     owner: freeswitch
     group: freeswitch
-    mode: 0777
+    mode: "0777"
 
 - name: Read bootstrapped state
-  stat:
+  ansible.builtin.stat:
     path: /etc/freeswitch/.bootstrap
   register: bootstrap_state
   ignore_errors: true
@@ -17,9 +17,9 @@
 - when: not bootstrap_state.stat.exists
   block:
     - name: Download FreeSWITCH configure
-      get_url:
-        url: "https://git.webitel.com/projects/WEP/repos/freeswitch/raw/{{ item }}"
-        dest: "/etc/freeswitch/{{ item }}"
+      ansible.builtin.get_url:
+        url: https://git.webitel.com/projects/WEP/repos/freeswitch/raw/{{ item }}
+        dest: /etc/freeswitch/{{ item }}
       with_items:
         - mime.types
         - configuration.xml
@@ -27,11 +27,11 @@
         - vars.xml
 
     - name: Change outbound SIP Proxy IP
-      replace:
+      ansible.builtin.replace:
         path: /etc/freeswitch/vars.xml
-        after: '<X-PRE-PROCESS cmd="set" data="outbound_sip_proxy='
+        after: <X-PRE-PROCESS cmd="set" data="outbound_sip_proxy=
         before: '"/>'
-        regexp: '^(.+)$'
+        regexp: ^(.+)$
         replace: '{{ hostvars[inventory_hostname]["ansible_default_ipv4"]["address"] }}'
 
     - when: groups['all'] | length > 1
@@ -41,7 +41,7 @@
           become_user: postgres
           postgresql_query:
             db: webitel
-            query: "DELETE FROM dispatcher WHERE destination = 'sip:127.0.0.1:5080'"
+            query: DELETE FROM dispatcher WHERE destination = 'sip:127.0.0.1:5080'
           with_items: "{{ groups['postgresql_main'] }}"
 
         - name: Insert FreeSWITCH IP in PostgreSQL db webitel (dispatcher)
@@ -49,69 +49,70 @@
           become_user: postgres
           postgresql_query:
             db: webitel
-            query: "INSERT INTO dispatcher (setid, destination, state, weight, priority, attrs, description) VALUES (1, 'sip:{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:5080', 0, 0, 0, 'FreeSWITCH', '{{ inventory_hostname }}')"
+            query: INSERT INTO dispatcher (setid, destination, state, weight, priority, attrs, description) VALUES (1, 'sip:{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address']
+              }}:5080', 0, 0, 0, 'FreeSWITCH', '{{ inventory_hostname }}')
           with_items: "{{ groups['postgresql_main'] }}"
 
         - name: Change RabbitMQ IP
-          replace:
-            path: '/etc/freeswitch/vars.xml'
-            regexp: '(^.*)(\sdata="amqp_host=127\.0\.0\.1")(.*$)'
-            replace: '\1 data="amqp_host={{ hostvars[groups["rabbitmq"][0]]["ansible_default_ipv4"]["address"] }}"\3'
+          ansible.builtin.replace:
+            path: /etc/freeswitch/vars.xml
+            regexp: (^.*)(\sdata="amqp_host=127\.0\.0\.1")(.*$)
+            replace: \1 data="amqp_host={{ hostvars[groups["rabbitmq"][0]]["ansible_default_ipv4"]["address"] }}"\3
 
         - name: Change GRPC FreeSWITCH IP
-          replace:
-            path: '/etc/freeswitch/vars.xml'
-            regexp: '(^.*)(\sdata="grpc_host=127\.0\.0\.1")(.*$)'
-            replace: '\1 data="grpc_host={{ hostvars[inventory_hostname]["ansible_default_ipv4"]["address"] }}"\3'
+          ansible.builtin.replace:
+            path: /etc/freeswitch/vars.xml
+            regexp: (^.*)(\sdata="grpc_host=127\.0\.0\.1")(.*$)
+            replace: \1 data="grpc_host={{ hostvars[inventory_hostname]["ansible_default_ipv4"]["address"] }}"\3
 
         - name: Change Consul IP
-          replace:
+          ansible.builtin.replace:
             path: /etc/freeswitch/vars.xml
-            after: 'consul_url=http://'
-            before: ':8500'
-            regexp: '^(.+)$'
+            after: consul_url=http://
+            before: :8500
+            regexp: ^(.+)$
             replace: '{{ hostvars[groups["consul"][0]]["ansible_default_ipv4"]["address"] }}'
 
         - name: Change Webitel Storage IP
-          replace:
+          ansible.builtin.replace:
             path: /etc/freeswitch/vars.xml
-            after: 'cdr_url='
-            before: ':10021'
-            regexp: '^(.+)$'
+            after: cdr_url=
+            before: :10021
+            regexp: ^(.+)$
             replace: '{{ hostvars[groups["webitel_storage"][0]]["ansible_default_ipv4"]["address"] }}'
 
         - name: Change Webitel Flow Manager IP
-          replace:
+          ansible.builtin.replace:
             path: /etc/freeswitch/vars.xml
-            after: 'acr_srv='
-            before: ':10030'
-            regexp: '^(.+)$'
+            after: acr_srv=
+            before: :10030
+            regexp: ^(.+)$
             replace: '{{ hostvars[groups["webitel_flow_manager"][0]]["ansible_default_ipv4"]["address"] }}'
 
         - name: Change outbound SIP Proxy IP
-          replace:
+          ansible.builtin.replace:
             path: /etc/freeswitch/vars.xml
-            after: '<X-PRE-PROCESS cmd="set" data="outbound_sip_proxy='
+            after: <X-PRE-PROCESS cmd="set" data="outbound_sip_proxy=
             before: '"/>'
-            regexp: '^(.+)$'
+            regexp: ^(.+)$
             replace: '{{ hostvars[groups["opensips"][0]]["ansible_default_ipv4"]["address"] }}'
 
         - name: Change Sofia FreeSWITCH IP
-          replace:
-            path: '/etc/freeswitch/vars.xml'
-            regexp: '(^.*)(\sdata="sofia_server_ip=127\.0\.0\.1")(.*$)'
-            replace: '\1 data="sofia_server_ip={{ hostvars[inventory_hostname]["ansible_default_ipv4"]["address"] }}"\3'
+          ansible.builtin.replace:
+            path: /etc/freeswitch/vars.xml
+            regexp: (^.*)(\sdata="sofia_server_ip=127\.0\.0\.1")(.*$)
+            replace: \1 data="sofia_server_ip={{ hostvars[inventory_hostname]["ansible_default_ipv4"]["address"] }}"\3
 
     - name: Enable Freeswitch at startup (systemd)
-      systemd:
+      ansible.builtin.systemd:
         name: freeswitch
-        enabled: yes
+        enabled: true
         state: restarted
-        daemon_reload: yes
+        daemon_reload: true
       when:
         - ansible_service_mgr == "systemd"
 
     - name: Create bootstrapped state file
-      file:
+      ansible.builtin.file:
         dest: /etc/freeswitch/.bootstrap
         state: touch

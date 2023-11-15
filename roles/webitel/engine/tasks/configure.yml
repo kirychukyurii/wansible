@@ -1,16 +1,16 @@
 ---
 - name: Ensure bootstrapped file exists
-  copy:
+  ansible.builtin.copy:
     content: ""
     dest: /opt/webitel/.bootstrap
-    force: no
+    force: false
 
 - name: Read bootstrapped state. Ensure /opt/webitel/.bootstrap contains webitel_engine
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /opt/webitel/.bootstrap
-    regexp: "^webitel_engine"
+    regexp: ^webitel_engine
     state: absent
-  check_mode: yes
+  check_mode: true
   changed_when: false
   ignore_errors: true
   register: bootstrap_state
@@ -18,10 +18,10 @@
 - when: not bootstrap_state.found
   block:
     - name: Copy webitel systemd files
-      copy:
-        src: "/opt/webitel/etc/systemd/system/engine.service"
+      ansible.builtin.copy:
+        src: /opt/webitel/etc/systemd/system/engine.service
         dest: /etc/systemd/system/
-        remote_src: yes
+        remote_src: true
       when:
         - ansible_service_mgr == "systemd"
 
@@ -30,29 +30,31 @@
         - when: inventory_hostname not in groups['webitel_storage']
           block:
             - name: Copy the pre-signed cert from storage to engine
-              copy: src=buffer/key.pem dest=/opt/storage/
-
+              ansible.builtin.copy:
+                src: buffer/key.pem
+                dest: /opt/storage/
+                cmd: ""
     - name: Change SIP IP
       replace:
-        path: '/etc/systemd/system/engine.service'
-        regexp: '(1\.1\.1\.1)'
+        path: /etc/systemd/system/engine.service
+        regexp: (1\.1\.1\.1)
         replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
 
     - name: Change SIP Proxy IP
       replace:
-        path: '/etc/systemd/system/engine.service'
-        after: '-sip_proxy_addr '
-        before: ' '
-        regexp: '^(.+)$'
-        replace: "sip:{{ nginx_site_name }}"
+        path: /etc/systemd/system/engine.service
+        after: "-sip_proxy_addr "
+        before: " "
+        regexp: ^(.+)$
+        replace: sip:{{ nginx_site_name }}
       when: nginx_letsencrypt | bool
 
     - name: Change WS SIP IP
       replace:
-        path: '/etc/systemd/system/engine.service'
-        after: '-ws_sip_addr '
-        before: ' '
-        regexp: '^(.+)$'
+        path: /etc/systemd/system/engine.service
+        after: "-ws_sip_addr "
+        before: " "
+        regexp: ^(.+)$
         replace: "{{ nginx_site_name }}"
       when: nginx_letsencrypt | bool
 
@@ -60,66 +62,66 @@
       block:
         - name: Change Consul IP
           replace:
-            path: '/etc/systemd/system/engine.service'
-            after: '-consul '
-            before: ':8500'
-            regexp: '^(.+)$'
+            path: /etc/systemd/system/engine.service
+            after: "-consul "
+            before: :8500
+            regexp: ^(.+)$
             replace: "{{ hostvars[groups[ 'consul' ][0]]['ansible_default_ipv4']['address'] }}"
 
         - name: Change GRPC IP
           replace:
-            path: '/etc/systemd/system/engine.service'
-            after: '-grpc_addr '
-            before: ' '
-            regexp: '^(.+)$'
+            path: /etc/systemd/system/engine.service
+            after: "-grpc_addr "
+            before: " "
+            regexp: ^(.+)$
             replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
 
         - name: Change Websocket IP
           replace:
-            path: '/etc/systemd/system/engine.service'
-            after: '-websocket '
-            before: ':10022'
-            regexp: '^(.+)$'
+            path: /etc/systemd/system/engine.service
+            after: "-websocket "
+            before: :10022
+            regexp: ^(.+)$
             replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
 
         - name: Change OpenSIPs IP
           replace:
-            path: '/etc/systemd/system/engine.service'
-            after: '-open_sip_addr '
-            before: ' '
-            regexp: '^(.+)$'
+            path: /etc/systemd/system/engine.service
+            after: "-open_sip_addr "
+            before: " "
+            regexp: ^(.+)$
             replace: "{{ hostvars[groups[ 'opensips' ][0]]['ansible_default_ipv4']['address'] }}"
 
         - name: Change WS SIP IP
           replace:
-            path: '/etc/systemd/system/engine.service'
-            after: '-ws_sip_addr '
-            before: ' '
-            regexp: '^(.+)$'
+            path: /etc/systemd/system/engine.service
+            after: "-ws_sip_addr "
+            before: " "
+            regexp: ^(.+)$
             replace: "{{ hostvars[groups[ 'nginx' ][0]]['ansible_default_ipv4']['address'] }}"
           when: not nginx_letsencrypt
 
         - name: Change RabbitMQ IP
           replace:
-            path: '/etc/systemd/system/engine.service'
-            after: '-amqp amqp://webitel:webitel@'
-            before: ':5672'
-            regexp: '^(.+)$'
+            path: /etc/systemd/system/engine.service
+            after: -amqp amqp://webitel:webitel@
+            before: :5672
+            regexp: ^(.+)$
             replace: "{{ hostvars[groups[ 'rabbitmq' ][0]]['ansible_default_ipv4']['address'] }}"
 
         - name: Change PostgreSQL IP
           replace:
-            path: '/etc/systemd/system/engine.service'
-            after: '-data_source postgres://opensips:webitel@'
-            before: ':5432'
-            regexp: '^(.+)$'
+            path: /etc/systemd/system/engine.service
+            after: -data_source postgres://opensips:webitel@
+            before: :5432
+            regexp: ^(.+)$
             replace: "{{ hostvars[groups[ 'postgresql_main' ][0]]['ansible_default_ipv4']['address'] }}"
 
     - name: Enable webitel at startup (systemd)
       systemd:
-        name: "engine.service"
-        enabled: yes
-        daemon_reload: yes
+        name: engine.service
+        enabled: true
+        daemon_reload: true
         state: restarted
       when:
         - ansible_service_mgr == "systemd"
@@ -127,5 +129,5 @@
     - name: Insert info into bootstrapped state file
       lineinfile:
         path: /opt/webitel/.bootstrap
-        line: "webitel_engine"
+        line: webitel_engine
         insertbefore: BOF

@@ -1,28 +1,28 @@
 ---
 - name: Update repositories cache and install fail2ban packages
-  apt:
+  ansible.builtin.apt:
     pkg:
       - rsyslog
       - fail2ban
     state: latest
-    install_recommends: no
-    update_cache: yes
+    install_recommends: false
+    update_cache: true
 
 - name: Change loglevel
-  replace:
+  ansible.builtin.replace:
     path: /etc/opensips/opensips.cfg
-    regexp: '(LOG_LOCAL0)$'
-    replace: 'LOG_LOCAL7'
+    regexp: (LOG_LOCAL0)$
+    replace: LOG_LOCAL7
   notify: restart opensips
 
 - name: Change /etc/rsyslog.conf file
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/rsyslog.conf
     line: local7.* /var/log/opensips.log
   notify: restart rsyslog
 
 - name: Change jail.conf file
-  blockinfile:
+  ansible.builtin.blockinfile:
     path: /etc/fail2ban/jail.conf
     block: |
       [opensips]
@@ -34,7 +34,7 @@
       bantime = 3600
 
 - name: Create /var/log/opensips.log file
-  file:
+  ansible.builtin.file:
     dest: /var/log/opensips.log
     state: touch
   notify:
@@ -42,7 +42,7 @@
     - restart opensips
 
 - name: Add Fail2Ban config
-  template:
+  ansible.builtin.template:
     src: files/fail2ban_opensips.conf
     dest: /etc/fail2ban/filter.d/opensips.conf
   notify:
@@ -50,15 +50,15 @@
     - restart fail2ban
 
 - name: Add logrotate config
-  template:
+  ansible.builtin.template:
     src: files/logrotate_opensips.conf
     dest: /etc/logrotate.d/opensips
   notify:
     - restart logrotate
 
 - name: Enable Fail2Ban at startup (systemd)
-  systemd:
+  ansible.builtin.systemd:
     name: fail2ban
-    enabled: yes
+    enabled: true
   when:
     - ansible_service_mgr == "systemd"
