@@ -29,7 +29,7 @@
       block:
         - name: Change Consul IP
           replace:
-            path: /etc/systemd/system/engine.service
+            path: /etc/systemd/system/webitel-logger.service
             after: "-consul "
             before: :8500
             regexp: ^(.+)$
@@ -37,7 +37,7 @@
 
         - name: Change GRPC IP
           replace:
-            path: /etc/systemd/system/engine.service
+            path: /etc/systemd/system/webitel-logger.service
             after: "-grpc_addr "
             before: " "
             regexp: ^(.+)$
@@ -45,7 +45,7 @@
 
         - name: Change RabbitMQ IP
           replace:
-            path: /etc/systemd/system/engine.service
+            path: /etc/systemd/system/webitel-logger.service
             after: -amqp amqp://webitel:webitel@
             before: :5672
             regexp: ^(.+)$
@@ -53,7 +53,7 @@
 
         - name: Change PostgreSQL IP
           replace:
-            path: /etc/systemd/system/engine.service
+            path: /etc/systemd/system/webitel-logger.service
             after: -data_source postgres://opensips:webitel@
             before: :5432
             regexp: ^(.+)$

@@ -30,5 +30,6 @@ all:
         - webitel_flow_manager
         - webitel_messages
         - webitel_storage
+        - webitel_logger
         - freeswitch
         - grafana

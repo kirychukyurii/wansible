@@ -20,3 +20,4 @@ all:
         - webitel_flow_manager
         - webitel_storage
         - webitel_messages
+        - webitel_logger
