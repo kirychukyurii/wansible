@@ -14,7 +14,7 @@
       ansible.builtin.fetch:
         src: /opt/storage/key.pem
         dest: buffer/
-        flat: "yes"
+        flat: "true"
         cmd: ""
       tags:
         - webitel_flow_manager_configure

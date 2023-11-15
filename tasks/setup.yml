@@ -22,8 +22,8 @@
               - dnsutils
               - python3-psycopg2
             state: latest
-            update_cache: yes
-            install_recommends: no
+            update_cache: true
+            install_recommends: false
 
     - when: inventory_hostname in groups['rtpengine']
       block:
@@ -72,7 +72,7 @@
               }} main
             state: present
             filename: webitel
-            update_cache: no
+            update_cache: false
 
         - name: "Setup : Add Webitel releases repo"
           apt_repository:
@@ -80,7 +80,7 @@
               }} {{ webitel_version }}-releases
             state: present
             filename: webitel
-            update_cache: no
+            update_cache: false
           when: webitel_version != 'dev'
 
     - when: inventory_hostname in groups['consul']
@@ -99,7 +99,7 @@
           apt_repository:
             repo: deb [arch=amd64] https://apt.releases.hashicorp.com {{ hostvars[inventory_hostname].ansible_distribution_release }} main
             state: present
-            update_cache: no
+            update_cache: false
           register: _update_apt_cache
           until: _update_apt_cache is succeeded
           retries: 5
@@ -128,7 +128,7 @@
               }} main
             state: present
             filename: freeswitch
-            update_cache: no
+            update_cache: false
 
     - when: inventory_hostname in groups['grafana'] and grafana_enable | bool
       block:
@@ -142,7 +142,7 @@
             repo: deb [signed-by=/usr/share/keyrings/grafana.key] https://apt.grafana.com stable main
             state: present
             filename: grafana
-            update_cache: no
+            update_cache: false
 
     - when: inventory_hostname in groups['opensips']
       block:
@@ -157,7 +157,7 @@
             repo: deb https://apt.opensips.org {{ hostvars[inventory_hostname].ansible_distribution_release }} {{ opensips_version }}-releases
             state: present
             filename: opensips
-            update_cache: no
+            update_cache: false
 
     - when: inventory_hostname in groups['postgresql']
       block:
@@ -176,14 +176,14 @@
             repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ hostvars[inventory_hostname].ansible_distribution_release }}-pgdg main
             state: present
             filename: postgresql
-            update_cache: no
+            update_cache: false
 
         - name: "Setup : Add TimescaleDB repository into sources list"
           apt_repository:
             repo: deb https://packagecloud.io/timescale/timescaledb/debian/ {{ hostvars[inventory_hostname].ansible_distribution_release }} main
             state: present
             filename: timescaledb
-            update_cache: no
+            update_cache: false
 
     - when: inventory_hostname in groups['rabbitmq']
       block:
@@ -207,14 +207,14 @@
             repo: deb https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-server/deb/debian {{ hostvars[inventory_hostname].ansible_distribution_release }} main
             state: present
             filename: rabbitmq
-            update_cache: no
+            update_cache: false
 
         - name: "Setup : Add rabbitmq-erlang repository into sources list"
           apt_repository:
             repo: deb https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-erlang/deb/debian {{ hostvars[inventory_hostname].ansible_distribution_release }} main
             state: present
             filename: rabbitmq-erlang
-            update_cache: no
+            update_cache: false
 
     - when: inventory_hostname in groups['all']
       block:
@@ -229,43 +229,43 @@
           sysctl:
             name: net.ipv6.conf.all.disable_ipv6
             value: "1"
-            sysctl_set: yes
+            sysctl_set: true
             state: present
-            reload: yes
+            reload: true
 
         - name: "Setup : Apply sysctl (default.disable_ipv6)"
           sysctl:
             name: net.ipv6.conf.default.disable_ipv6
             value: "1"
-            sysctl_set: yes
+            sysctl_set: true
             state: present
-            reload: yes
+            reload: true
 
         - name: "Setup : Apply sysctl (lo.disable_ipv6)"
           sysctl:
             name: net.ipv6.conf.lo.disable_ipv6
             value: "1"
-            sysctl_set: yes
+            sysctl_set: true
             state: present
-            reload: yes
+            reload: true
 
         - name: "Setup : Apply sysctl (fs.file-max)"
           sysctl:
             name: fs.file-max
             value: "1000000"
-            sysctl_set: yes
+            sysctl_set: true
             state: present
-            reload: yes
+            reload: true
 
         - name: "Setup : Apply sysctl (vm.max_map_count)"
           sysctl:
             name: vm.max_map_count
             value: "262144"
-            sysctl_set: yes
+            sysctl_set: true
             state: present
-            reload: yes
+            reload: true
 
         - name: "Setup : Updates apt cache & upgrades dist"
           apt:
-            upgrade: yes
-            update_cache: yes
+            upgrade: true
+            update_cache: true

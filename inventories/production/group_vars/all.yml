@@ -2,7 +2,7 @@
 inventory: production
 
 ansible_any_errors_fatal: true
-ansible_ignore_unreachable: yes
+ansible_ignore_unreachable: true
 ansible_python_interpreter: /usr/bin/python3
 
 # This setting is always appended to the default ssh command line.
