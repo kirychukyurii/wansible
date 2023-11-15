@@ -79,3 +79,4 @@ Before running playbook with custom services definition please edit your invento
 | `webitel_flow_manager` | true     | Install and configure `webitel-flow-manager`.                      | -                                                                                                    |
 | `webitel_storage`      | true     | Install and configure `webitel-storage`.                           | -                                                                                                    |
 | `webitel_messages`     | false    | Install and configure `webitel-messages`.                          | -                                                                                                    |
+| `webitel_logger`       | false    | Install and configure `webitel-logger`.                            | -                                                                                                    |

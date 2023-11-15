@@ -1,0 +1,75 @@
+---
+- name: Ensure bootstrapped file exists
+  ansible.builtin.copy:
+    content: ""
+    dest: /opt/webitel/.bootstrap
+    force: false
+
+- name: Read bootstrapped state. Ensure /opt/webitel/.bootstrap contains webitel_logger
+  ansible.builtin.lineinfile:
+    path: /opt/webitel/.bootstrap
+    regexp: ^webitel_logger
+    state: absent
+  check_mode: true
+  changed_when: false
+  ignore_errors: true
+  register: bootstrap_state
+
+- when: not bootstrap_state.found
+  block:
+    - name: Copy webitel systemd files
+      ansible.builtin.copy:
+        src: /opt/webitel/etc/systemd/system/webitel-logger.service
+        dest: /etc/systemd/system/
+        remote_src: true
+      when:
+        - ansible_service_mgr == "systemd"
+
+    - when: groups['all'] | length > 1
+      block:
+        - name: Change Consul IP
+          replace:
+            path: /etc/systemd/system/engine.service
+            after: "-consul "
+            before: :8500
+            regexp: ^(.+)$
+            replace: "{{ hostvars[groups[ 'consul' ][0]]['ansible_default_ipv4']['address'] }}"
+
+        - name: Change GRPC IP
+          replace:
+            path: /etc/systemd/system/engine.service
+            after: "-grpc_addr "
+            before: " "
+            regexp: ^(.+)$
+            replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
+
+        - name: Change RabbitMQ IP
+          replace:
+            path: /etc/systemd/system/engine.service
+            after: -amqp amqp://webitel:webitel@
+            before: :5672
+            regexp: ^(.+)$
+            replace: "{{ hostvars[groups[ 'rabbitmq' ][0]]['ansible_default_ipv4']['address'] }}"
+
+        - name: Change PostgreSQL IP
+          replace:
+            path: /etc/systemd/system/engine.service
+            after: -data_source postgres://opensips:webitel@
+            before: :5432
+            regexp: ^(.+)$
+            replace: "{{ hostvars[groups[ 'postgresql_main' ][0]]['ansible_default_ipv4']['address'] }}"
+
+    - name: Enable webitel at startup (systemd)
+      ansible.builtin.systemd:
+        name: webitel-logger.service
+        enabled: true
+        daemon_reload: true
+        state: restarted
+      when:
+        - ansible_service_mgr == "systemd"
+
+    - name: Insert info into bootstrapped state file
+      ansible.builtin.lineinfile:
+        path: /opt/webitel/.bootstrap
+        line: webitel_logger
+        insertbefore: BOF

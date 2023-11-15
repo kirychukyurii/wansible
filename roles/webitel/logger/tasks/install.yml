@@ -1,0 +1,8 @@
+---
+- name: Install webitel_logger
+  ansible.builtin.apt:
+    name:
+      - webitel-logger
+    state: latest
+    update_cache: false
+    install_recommends: false

@@ -26,5 +26,6 @@
     - webitel/call_center
     - webitel/flow_manager
     - webitel/messages
+    - webitel/logger
   post_tasks:
     - ansible.builtin.include_tasks: tasks/finish.yml

@@ -1,0 +1,10 @@
+---
+- when: inventory_hostname in groups['webitel_logger']
+  block:
+    - ansible.builtin.include_tasks: install.yml
+      tags:
+        - webitel_logger_install
+
+    - ansible.builtin.include_tasks: configure.yml
+      tags:
+        - webitel_logger_configure
