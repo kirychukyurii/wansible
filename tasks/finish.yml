@@ -9,7 +9,6 @@
             url: "{% if nginx_letsencrypt is false %}http://{{ hostvars[groups['nginx'][0]]['ansible_default_ipv4']['address'] }}{% else %}https://{{ nginx_site_name }}{% endif %}/api/srvinfo"
             return_content: true
           register: webitel_server_key
-          when: nginx_letsencrypt is false
 
         - name: "Finish : All things done"
           ansible.builtin.debug:
