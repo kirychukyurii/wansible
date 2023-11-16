@@ -39,7 +39,7 @@
           replace:
             path: /etc/systemd/system/webitel-logger.service
             after: "-grpc_addr "
-            before: " "
+            before: :10011
             regexp: ^(.+)$
             replace: "{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}"
 
