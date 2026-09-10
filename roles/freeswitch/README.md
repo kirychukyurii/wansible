@@ -19,5 +19,6 @@ in vars.xml.
 
 ## Pending
 
-`[VM]` Verify `vars.xml` regexp patterns against actual 26.4 config structure
-(patterns were ported from 23.09/25.08 configs; see `# TODO(VM):` comments in configure.yml).
+Verify the `vars.xml` regexp patterns against the config the current package ships —
+they were ported from older FreeSWITCH configs and never checked (see the `# TODO:`
+comment in `configure.yml`).

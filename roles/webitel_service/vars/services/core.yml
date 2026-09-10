@@ -1,7 +1,6 @@
 ---
-# v26.04: webitel-api = HTTP API gateway + auth, webitel-app = provisioning/APR,
-# webitel-uac = SIP UAC <-> OpenSIPS, webitel-portal = public portal.
-# Shared infra keys (registry/broker/dbo/log) are repeated in each file.
+# Shared infra keys (registry/broker/dbo/log) are repeated per unit on purpose:
+# each unit reads its own env file, so there is nothing to factor out.
 webitel_sip_address: >- # noqa: var-naming[no-role-prefix]
   {{ hostvars[groups['opensips'][0]].ansible_default_ipv4.address
      if groups['opensips'] | default([]) | length > 0

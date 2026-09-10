@@ -28,7 +28,8 @@
     label: "{{ item.key }}"
   notify: restart freeswitch
 
-# TODO(VM): verify regexp patterns against 26.4 vars.xml structure (ported from 23.09/25.08 config).
+# TODO: these regexps were ported from older FreeSWITCH configs and have never
+# been verified against the vars.xml the current package actually ships.
 - name: Set outbound SIP proxy address in vars.xml
   ansible.builtin.replace:
     path: /etc/freeswitch/vars.xml
@@ -69,7 +70,8 @@
 
 # acr_srv (flow_manager ESL) uses this node's own IP only when flow_manager is
 # co-located with FreeSWITCH (warm-standby); otherwise the DC-local flow_manager.
-# 26.4 ports: esl 10035 / storage internal 10038 — sample vars.xml still has stale :10030/:10021.
+# The shipped sample vars.xml carries stale ports, which is why these are
+# rewritten from the topology facts rather than left alone.
 - name: Resolve FreeSWITCH-local service endpoints
   ansible.builtin.set_fact:
     _freeswitch_node_ip: "{{ '127.0.0.1' if single_node | default(false) else ansible_facts.default_ipv4.address }}"

@@ -110,12 +110,6 @@ level env key, so they aren't controlled here.
 | `webitel_storage_media_directory` | `/opt/storage/data` | storage |
 | `webitel_call_center_omnichannel` | `0` | call_center |
 
-> storage's `TEMP_DIRECTORY` is not managed by this role: the v26.04 unit has
-> `CacheDirectory=webitel-storage` + `ProtectSystem=strict` (RW only for
-> `/opt/storage`, CacheDir, LogsDir). The package default
-> `/var/cache/webitel-storage` is managed by systemd; any other path outside
-> `ReadWritePaths` would break writes.
-
 ## Tags
 
 - `install` / `configure`: phases (all services)

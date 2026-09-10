@@ -1,6 +1,6 @@
 ---
-# v26.04: webitel-messages-srv = chat manager core, webitel-messages-bot = bot
-# gateway + HTTP webhook listener. Shared infra keys duplicated in both.
+# Shared infra keys are duplicated across both units on purpose: each unit
+# reads its own env file, so there is nothing to factor out.
 webitel_messages_bind_host: "{{ '127.0.0.1' if single_node | default(false) else ansible_facts.default_ipv4.address }}" # noqa: var-naming[no-role-prefix]
 webitel_service_spec:
   package: webitel-messages
