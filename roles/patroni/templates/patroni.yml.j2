@@ -26,9 +26,10 @@ consul:
 
 bootstrap:
   dcs:
-    ttl: 30
-    loop_wait: 10
-    retry_timeout: 10
+    ttl: {{ patroni_ttl }}
+    loop_wait: {{ patroni_loop_wait }}
+    retry_timeout: {{ patroni_retry_timeout }}
+    synchronous_mode: {{ patroni_synchronous_mode | bool | lower }}
     maximum_lag_on_failover: 1048576
 {% if patroni_is_standby | bool %}
     standby_cluster:

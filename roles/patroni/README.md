@@ -14,6 +14,12 @@ Repos, base packages, and DB bootstrap are delegated to the `postgres_common` ro
 
 See `defaults/main.yml` for configurable variables.
 
+`patroni_cluster_hosts` follows the deployment profile: under `_topology_db_scope: dc` the cluster is the local datacenter's patroni hosts, under `global` (profile `stretch`) it is every patroni host across all datacenters.
+
+`patroni_ttl` and `patroni_retry_timeout` widen automatically under `global` scope (60/20 vs 30/10), because the DCS quorum then spans sites. Keep `ttl` above `loop_wait + 2 * retry_timeout` if you override them.
+
+`patroni_synchronous_mode` is `false` by default. Turning it on is an RPO decision: without it a failover to another datacenter loses transactions that had not shipped yet; with it every commit pays a WAN round trip.
+
 ## Vault variables (set in `vault.yml`)
 
 ```yaml

@@ -1,16 +1,25 @@
 ---
 consul_role: server
-consul_datacenter: "{{ datacenter }}"
+# In the stretch profile all sites form ONE Consul datacenter (a single raft),
+# so the DC name must not vary per host. Everywhere else each site is its own
+# isolated Consul datacenter.
+consul_global_datacenter: webitel
+consul_datacenter: >-
+  {{ consul_global_datacenter
+     if (_topology_db_scope | default('dc')) == 'global'
+     else datacenter }}
 consul_log_level: INFO            # trace|debug|info|warn|err
 consul_ui: false
 consul_telemetry_retention: "1m"  # prometheus_retention_time
 consul_server_hosts: >-
-  {{ groups['consul_server'] | default([])
-     | map('extract', hostvars)
-     | selectattr('datacenter', 'defined')
-     | selectattr('datacenter', '==', consul_datacenter)
-     | map(attribute='inventory_hostname') | list
-     or groups['consul_server'] | default([]) }}
+  {{ (groups['consul_server'] | default([]))
+     if (_topology_db_scope | default('dc')) == 'global'
+     else ((groups['consul_server'] | default([])
+            | map('extract', hostvars)
+            | selectattr('datacenter', 'defined')
+            | selectattr('datacenter', '==', consul_datacenter)
+            | map(attribute='inventory_hostname') | list)
+           or (groups['consul_server'] | default([]))) }}
 consul_bind_address: >-
   {{ '127.0.0.1' if single_node | default(false)
      else ansible_facts.default_ipv4.address }}
@@ -18,6 +27,12 @@ consul_bind_address: >-
 consul_client_address: >-
   {{ '127.0.0.1' if single_node | default(false)
      else '127.0.0.1 ' + ansible_facts.default_ipv4.address }}
+# Consul raft timings assume a LAN. Under 'global' scope the quorum spans sites,
+# so heartbeat and leader-lease windows have to widen or leadership will flap on
+# a slow link. 5 is Consul's recommendation for high-latency links; 1 is the LAN
+# default. Tune down once the real inter-site RTT is measured.
+consul_raft_multiplier: >-
+  {{ 5 if (_topology_db_scope | default('dc')) == 'global' else 1 }}
 consul_data_dir: /var/consul
 consul_config_dir: /etc/consul.d
 consul_keyring: /usr/share/keyrings/hashicorp-archive-keyring.gpg
