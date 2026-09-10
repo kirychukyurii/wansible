@@ -69,6 +69,26 @@ Host and datacenter counts are not part of the profile: `warm_standby` is N data
 not two. At three datacenters both `warm_standby` and `stretch` are available — the
 profile name is the choice, it is never inferred from the inventory.
 
+### What each profile buys you
+
+Database-layer targets with the shipped defaults. These are targets, not guarantees:
+the actual numbers depend on your link, disk and backup schedule, and none of them
+have been measured on production hardware yet.
+
+| Profile | Survives | RPO | RTO | Bounded by |
+|---|---|---|---|---|
+| `singlehost` | nothing | last backup | hours | your backup schedule and restore speed |
+| `multihost` | loss of a non-DB host | last backup | hours (DB), minutes (other roles) | same; the DB is a single point of failure |
+| `failover` | loss of one node | ~0, at most 1 MiB of WAL | ~30–45 s, automatic | `patroni_ttl` 30 s + promotion; `maximum_lag_on_failover` 1 MiB |
+| `warm_standby` | loss of a whole datacenter | replication lag at the moment of loss — seconds when healthy, unbounded once the link degrades | minutes to hours, **manual** | how fast the external controller promotes and reroutes; no replication slot, so extreme lag means a rebuild |
+| `stretch` | loss of a whole datacenter | ~0, at most 1 MiB of WAL — or exactly 0 with `patroni_synchronous_mode: true` | ~60–90 s, automatic | `patroni_ttl` 60 s + promotion; sync mode trades a WAN round trip per commit for RPO 0 |
+
+Two things the table does not cover. First, RTO above is the **database** only: the
+application layer, DNS and SIP routing add their own time, and in `warm_standby` the
+whole switch is driven by Nomad jobs and the external controller, not by this playbook.
+Second, `failover` and `stretch` fail over on their own, while `warm_standby` never does
+— promotion there is always someone's decision.
+
 `stretch` is active/passive: traffic is served by the datacenter holding the database
 leader. It widens Consul and Patroni raft timings automatically (`consul_raft_multiplier`,
 `patroni_ttl`, `patroni_retry_timeout`); set `patroni_synchronous_mode: true` if a
@@ -127,36 +147,18 @@ runs on any node that talks to Postgres or RabbitMQ.
 
 ### Generating secrets
 
-Before running the playbook populate the vault file with HA-specific secrets.
-All values go into `inventories/production/group_vars/all/vault.yml` (encrypted with
-`ansible-vault`).
-
-```bash
-# Consul gossip encryption key (16-byte base64)
-consul keygen
-# -> paste result as vault_consul_encrypt_key
-
-# Erlang cookie for RabbitMQ cluster (any long random string)
-openssl rand -hex 32
-# -> paste result as vault_rabbitmq_erlang_cookie
-
-# Patroni passwords — generate one per variable
-openssl rand -hex 16   # vault_patroni_superuser_password
-openssl rand -hex 16   # vault_patroni_replication_password
-openssl rand -hex 16   # vault_patroni_rewind_password
-openssl rand -hex 16   # vault_patroni_restapi_password
-```
-
-Minimal vault file for HA (`vault.yml.example` in each HA example inventory lists all keys):
+Minimal vault file for HA — everything goes into
+`inventories/production/group_vars/all/vault.yml`, encrypted with `ansible-vault`.
+Each HA example inventory ships a `vault.yml.example` listing every key.
 
 ```yaml
-vault_consul_encrypt_key: "<consul keygen output>"
-vault_rabbitmq_erlang_cookie: "<random string, same on all nodes>"
-vault_patroni_superuser_password: "<random>"
-vault_patroni_replication_password: "<random>"
-vault_patroni_rewind_password: "<random>"
-vault_patroni_restapi_password: "<random>"
-# Plus the standard phase-1 secrets:
+vault_consul_encrypt_key: "<16-byte base64>"        # consul keygen
+vault_rabbitmq_erlang_cookie: "<random>"            # openssl rand -hex 32, same on all nodes
+vault_patroni_superuser_password: "<random>"        # openssl rand -hex 16
+vault_patroni_replication_password: "<random>"      # openssl rand -hex 16
+vault_patroni_rewind_password: "<random>"           # openssl rand -hex 16
+vault_patroni_restapi_password: "<random>"          # openssl rand -hex 16
+# Plus the standard single-DC secrets:
 vault_webitel_repo_s3_access_key: "..."
 vault_webitel_repo_s3_secret_key: "..."
 vault_freeswitch_signalwire_key: "..."
@@ -216,7 +218,7 @@ rabbitmqctl cluster_status
 
 ## Inventory model
 
-Webitel 26.4 uses a **host-centric** inventory: each host declares a `services` list, and
+Webitel 26.6 uses a **host-centric** inventory: each host declares a `services` list, and
 `ansible.builtin.constructed` turns each service name into an Ansible group.
 
 ```yaml
@@ -274,7 +276,7 @@ Set these in `inventories/production/group_vars/all.yml` (plain values) and
 
 | Variable | Default | Description |
 |---|---|---|
-| `webitel_version` | `"26.4"` | Webitel release version |
+| `webitel_version` | `"26.6"` | Webitel release version |
 | `webitel_repo_s3_access_key` | — (required) | S3 APT repo AWS AccessKeyId |
 | `webitel_repo_s3_secret_key` | — (required) | S3 APT repo AWS SecretAccessKey |
 | `webitel_repo_s3_bucket` | `webitel-apt-repo` | S3 bucket name |

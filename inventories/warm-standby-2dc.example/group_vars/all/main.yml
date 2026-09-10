@@ -17,7 +17,7 @@ ansible_become_password: "{{ vault_ansible_become_password }}"
 # here: group_vars/all takes priority over inventory group vars and would
 # collapse all hosts into a single DC.
 
-webitel_version: "26.4"
+webitel_version: "26.6"
 webitel_repo_s3_bucket: webitel-apt-repo
 webitel_repo_s3_region: eu-central-1
 webitel_repo_s3_access_key: "{{ vault_webitel_repo_s3_access_key }}"

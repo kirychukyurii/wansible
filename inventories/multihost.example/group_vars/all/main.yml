@@ -9,7 +9,7 @@ datacenter: dc1
 dns_upstream_servers:
   - 1.1.1.1
 
-webitel_version: "26.4"
+webitel_version: "26.6"
 webitel_repo_s3_bucket: webitel-apt-repo
 webitel_repo_s3_region: eu-central-1
 webitel_repo_s3_access_key: "{{ vault_webitel_repo_s3_access_key }}"

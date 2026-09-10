@@ -32,7 +32,7 @@
           - ansible_facts.distribution_major_version in ['12', '13']
         fail_msg: >-
           Unsupported OS: {{ ansible_facts.distribution }} {{ ansible_facts.distribution_major_version }}.
-          Webitel 26.4 supports Debian 12 (PostgreSQL 15) and Debian 13 (PostgreSQL 18).
+          Webitel 26.6 supports Debian 12 (PostgreSQL 15) and Debian 13 (PostgreSQL 18).
         quiet: true
 
     - name: Preflight | Resolve PostgreSQL major (override via pg_major, else derive from Debian)
