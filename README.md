@@ -15,7 +15,7 @@
   * [Inventory model](#inventory-model)
   * [Services](#services)
   * [Tags](#tags)
-  * [Vault usage](#vault-usage)
+  * [Secrets and vault](#secrets-and-vault)
 <!-- TOC -->
 
 ## Requirements
@@ -111,25 +111,6 @@ ansible-playbook -i inventories/<name> playbooks/validate_topology.yml
 ```
 
 Design rationale: `docs/superpowers/specs/2026-09-10-topology-profiles-design.md`.
-
-### Generating secrets
-
-Minimal vault file for HA — everything goes into
-`inventories/production/group_vars/all/vault.yml`, encrypted with `ansible-vault`.
-Each HA example inventory ships a `vault.yml.example` listing every key.
-
-```yaml
-vault_consul_encrypt_key: "<16-byte base64>"        # consul keygen
-vault_rabbitmq_erlang_cookie: "<random>"            # openssl rand -hex 32, same on all nodes
-vault_patroni_superuser_password: "<random>"        # openssl rand -hex 16
-vault_patroni_replication_password: "<random>"      # openssl rand -hex 16
-vault_patroni_rewind_password: "<random>"           # openssl rand -hex 16
-vault_patroni_restapi_password: "<random>"          # openssl rand -hex 16
-# Plus the standard single-DC secrets:
-vault_webitel_repo_s3_access_key: "..."
-vault_webitel_repo_s3_secret_key: "..."
-vault_freeswitch_signalwire_key: "..."
-```
 
 ### Bring-up order
 
@@ -245,22 +226,32 @@ ansible-playbook -i inventories/production site.yml \
   --tags nginx_configure,webitel_core_configure --ask-vault-pass
 ```
 
-## Vault usage
+## Secrets and vault
 
-Sensitive values (S3 credentials, SignalWire key) must be stored in an encrypted vault file.
+Every secret goes into `inventories/production/group_vars/all/vault.yml`, encrypted with
+`ansible-vault`. Each example inventory ships a `vault.yml.example` listing the keys it needs.
 
-```bash
-# Encrypt the vault file
-ansible-vault encrypt inventories/production/group_vars/all/vault.yml
-
-# Edit encrypted vault
-ansible-vault edit inventories/production/group_vars/all/vault.yml
-
-# Run playbook with vault password prompt
-ansible-playbook -i inventories/production site.yml --ask-vault-pass
-
-# Or use a password file (do not commit it)
-ansible-playbook -i inventories/production site.yml --vault-password-file ~/.vault_pass
+```yaml
+# Needed by every profile:
+vault_webitel_repo_s3_access_key: "..."
+vault_webitel_repo_s3_secret_key: "..."
+vault_freeswitch_signalwire_key: "..."
+vault_webitel_cookie_seed: "<random>"               # openssl rand -hex 32
+vault_grafana_admin_password: "<random>"            # optional, defaults to webitel
+# Clustered profiles only (failover, warm_standby, stretch):
+vault_consul_encrypt_key: "<16-byte base64>"        # consul keygen
+vault_rabbitmq_erlang_cookie: "<random>"            # openssl rand -hex 32, same on all nodes
+vault_patroni_superuser_password: "<random>"        # openssl rand -hex 16
+vault_patroni_replication_password: "<random>"      # openssl rand -hex 16
+vault_patroni_rewind_password: "<random>"           # openssl rand -hex 16
+vault_patroni_restapi_password: "<random>"          # openssl rand -hex 16
 ```
 
-See `inventories/singlehost.example/group_vars/all/vault.yml.example` for the list of required vault variables.
+```bash
+ansible-vault encrypt inventories/production/group_vars/all/vault.yml   # once
+ansible-vault edit inventories/production/group_vars/all/vault.yml      # later
+
+# Unlock at run time: prompt, or a password file (never commit it)
+ansible-playbook -i inventories/production site.yml --ask-vault-pass
+ansible-playbook -i inventories/production site.yml --vault-password-file ~/.vault_pass
+```
