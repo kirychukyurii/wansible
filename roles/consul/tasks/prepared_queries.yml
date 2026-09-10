@@ -1,31 +1,21 @@
 ---
 # Aliases DNS-unfriendly service names (go.webitel.api) to query.consul names.
-# POST is not idempotent, so check by Name via GET first.
-- name: Get existing Consul prepared queries
-  ansible.builtin.uri:
-    url: http://127.0.0.1:8500/v1/query
-    method: GET
-    return_content: true
-  register: _consul_queries
-  run_once: true
-  delegate_to: "{{ groups['consul_server'][0] }}"
+# Prepared queries are per Consul cluster, and under the 'dc' scope every
+# datacenter runs its own isolated cluster — so this has to run once per cluster,
+# not once globally, or nginx in the other datacenters gets NXDOMAIN.
+- name: Resolve one consul_server per Consul cluster
+  ansible.builtin.set_fact:
+    _consul_query_targets: >-
+      {{ [(groups['consul_server'] | default([]))[0]]
+         if (_topology_db_scope | default('dc')) == 'global'
+         else (groups['consul_server'] | default([])
+               | map('extract', hostvars)
+               | groupby('datacenter')
+               | map(attribute='1') | map('first')
+               | map(attribute='inventory_hostname') | list) }}
 
-- name: Create Consul prepared queries (if absent)
-  ansible.builtin.uri:
-    url: http://127.0.0.1:8500/v1/query
-    method: POST
-    body_format: json
-    body:
-      Name: "{{ item.name }}"
-      Service:
-        Service: "{{ item.service }}"
-        OnlyPassing: true
-    status_code: 200
-  loop:
-    - { name: "webitel-api", service: "go.webitel.api" }
-    - { name: "webitel-messages-bot", service: "webitel.chat.bot" }
+- name: Create prepared queries on every Consul cluster
+  ansible.builtin.include_tasks: prepared_queries_one.yml
+  loop: "{{ _consul_query_targets }}"
   loop_control:
-    label: "{{ item.name }}"
-  when: item.name not in (_consul_queries.json | map(attribute='Name') | list)
-  run_once: true
-  delegate_to: "{{ groups['consul_server'][0] }}"
+    loop_var: _consul_target
