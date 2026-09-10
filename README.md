@@ -87,9 +87,9 @@ Two caveats:
 - Only `failover` and `stretch` promote themselves. `warm_standby` promotion is always
   a decision, carried out by Nomad jobs and the external controller, not by this playbook.
 
-Host and datacenter counts are not part of the profile: `warm_standby` is N datacenters,
-not two. At three datacenters both `warm_standby` and `stretch` are available — the
-profile name is the choice, it is never inferred from the inventory.
+`warm_standby` is N datacenters, not two. At three both it and `stretch` fit, so pick by
+what you need: per-DC clusters that the controller promotes, or one cluster that promotes
+itself.
 
 `stretch` is active/passive: traffic is served by the datacenter holding the database
 leader. It widens Consul and Patroni raft timings automatically (`consul_raft_multiplier`,
