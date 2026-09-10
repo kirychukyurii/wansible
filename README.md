@@ -13,9 +13,9 @@
   * [Quickstart](#quickstart)
   * [Deployment profiles](#deployment-profiles)
   * [Inventory model](#inventory-model)
-  * [Services](#services)
-  * [Tags](#tags)
   * [Secrets and vault](#secrets-and-vault)
+  * [Verification commands](#verification-commands)
+  * [Tags](#tags)
 <!-- TOC -->
 
 ## Requirements
@@ -36,13 +36,13 @@
 # 1. Install required Ansible collections
 ansible-galaxy collection install -r requirements.yml
 
-# 2. Create your inventory from the example
+# 2. Create your inventory from the example — see "Deployment profiles" for which one
 cp -r inventories/singlehost.example inventories/production
 
-# 3. Edit host definitions and assign services
+# 3. Edit host definitions and assign services — see "Inventory model"
 $EDITOR inventories/production/01-hosts.yml
 
-# 4. Fill in secret credentials
+# 4. Fill in secret credentials — see "Secrets and vault" for the full key list
 cp inventories/production/group_vars/all/vault.yml.example \
    inventories/production/group_vars/all/vault.yml
 $EDITOR inventories/production/group_vars/all/vault.yml
@@ -112,46 +112,9 @@ ansible-playbook -i inventories/<name> playbooks/validate_topology.yml
 
 Design rationale: `docs/superpowers/specs/2026-09-10-topology-profiles-design.md`.
 
-### Bring-up order
-
-`site.yml` runs plays in this sequence:
-
-1. PKI (CA + node certificates, controller-side)
-2. Base system
-3. Consul servers (serial: 1)
-4. Consul agents
-5. Nomad servers, then Nomad clients
-6. Patroni cluster (serial: 1)
-7. RabbitMQ cluster (serial: 1)
-8. Webitel application services
-
-### Verification commands
-
-After a successful run, confirm cluster health on any cluster node:
-
-```bash
-# Consul — all servers should be alive
-consul members
-
-# Resolve the Patroni leader via Consul DNS
-dig @127.0.0.1 -p 8600 primary.webitel-postgres.service.consul
-
-# Patroni — expect 1 Leader + N Replica, Lag 0
-patronictl -c /etc/patroni/config.yml list
-
-# Nomad servers
-nomad server members
-
-# Nomad clients
-nomad node status
-
-# RabbitMQ — all nodes running
-rabbitmqctl cluster_status
-```
-
 ## Inventory model
 
-Webitel 26.6 uses a **host-centric** inventory: each host declares a `services` list, and
+The inventory is **host-centric**: each host declares a `services` list, and
 `ansible.builtin.constructed` turns each service name into an Ansible group.
 
 ```yaml
@@ -171,26 +134,24 @@ all:
         # ... more services
 ```
 
-Inspect the resulting groups at any time:
-
-```bash
-ansible-inventory -i inventories/production --graph
-```
-
-## Services
-
-The table below lists every supported service value for the `services` host variable.
+Every valid value for `services`, in the order they are listed in
+`playbooks/vars/known_services.yml` — preflight rejects anything not on that list:
 
 | Service | Description |
 |---|---|
-| `consul_server` | HashiCorp Consul (server mode, service discovery) |
-| `postgres` | PostgreSQL + TimescaleDB + Webitel extension |
+| `consul_server` | Consul in server mode: service discovery, and the DCS Patroni elects through |
+| `consul_agent` | Consul in client mode, for hosts that only consume discovery |
+| `nomad_server` | Nomad server (scheduling quorum) |
+| `nomad_client` | Nomad client. Its presence hands unit lifecycle to Nomad: Ansible still installs packages and writes env, but does not enable or start the units |
+| `patroni` | PostgreSQL managed by Patroni. Replaces `postgres` in the clustered profiles — a host must not be in both |
+| `postgres` | Standalone PostgreSQL + TimescaleDB + Webitel extension |
 | `rabbitmq` | RabbitMQ message broker |
 | `freeswitch` | FreeSWITCH media server |
 | `rtpengine` | Sipwise RTPEngine (media relay) |
 | `opensips` | OpenSIPS SIP proxy |
-| `nginx` | NGINX reverse proxy (and optional Let's Encrypt) |
+| `nginx` | NGINX reverse proxy and TLS termination |
 | `grafana` | Grafana analytics and dashboards |
+| `haproxy` | Local TCP balancer for PostgreSQL (RW/RO) and RabbitMQ; runs as a sidecar on hosts that talk to them |
 | `webitel_core` | Webitel API, App and UAC services |
 | `webitel_engine` | Webitel Engine (call routing) |
 | `webitel_call_center` | Webitel Call Center service |
@@ -202,28 +163,10 @@ The table below lists every supported service value for the `services` host vari
 | `webitel_media_exporter` | Webitel Media Exporter (recording export) |
 | `webitel_frontend` | Webitel frontend web applications |
 
-## Tags
-
-Every role exposes fine-grained tags so you can limit execution to a specific phase:
-
-| Tag pattern | Effect |
-|---|---|
-| `base_install`, `base_repo`, `base_configure` | Base system role phases |
-| `consul_install`, `consul_configure` | Consul role phases |
-| `postgres_install`, `postgres_configure`, `postgres_database` | PostgreSQL role phases |
-| `rabbitmq_install`, `rabbitmq_configure` | RabbitMQ role phases |
-| `freeswitch_install`, `freeswitch_configure` | FreeSWITCH role phases |
-| `rtpengine_install`, `rtpengine_configure` | RTPEngine role phases |
-| `opensips_install`, `opensips_configure`, `opensips_fail2ban` | OpenSIPS role phases |
-| `nginx_install`, `nginx_configure` | NGINX role phases |
-| `grafana_install`, `grafana_configure`, `grafana_dashboards` | Grafana role phases |
-| `webitel_*_install`, `webitel_*_configure` | Per-service Webitel role phases |
-
-Example — re-run only configuration for nginx and webitel_core:
+Inspect the resulting groups at any time:
 
 ```bash
-ansible-playbook -i inventories/production site.yml \
-  --tags nginx_configure,webitel_core_configure --ask-vault-pass
+ansible-inventory -i inventories/production --graph
 ```
 
 ## Secrets and vault
@@ -255,3 +198,52 @@ ansible-vault edit inventories/production/group_vars/all/vault.yml      # later
 ansible-playbook -i inventories/production site.yml --ask-vault-pass
 ansible-playbook -i inventories/production site.yml --vault-password-file ~/.vault_pass
 ```
+
+## Verification commands
+
+After a successful run, confirm cluster health on any cluster node:
+
+```bash
+# Consul — all servers should be alive
+consul members
+
+# Resolve the Patroni leader via Consul DNS
+dig @127.0.0.1 -p 8600 primary.webitel-postgres.service.consul
+
+# Patroni — expect 1 Leader + N Replica, Lag 0
+patronictl -c /etc/patroni/config.yml list
+
+# Nomad servers
+nomad server members
+
+# Nomad clients
+nomad node status
+
+# RabbitMQ — all nodes running
+rabbitmqctl cluster_status
+```
+
+## Tags
+
+Every role exposes fine-grained tags so you can limit execution to a specific phase:
+
+| Tag pattern | Effect |
+|---|---|
+| `base_install`, `base_repo`, `base_configure` | Base system role phases |
+| `consul_install`, `consul_configure` | Consul role phases |
+| `postgres_install`, `postgres_configure`, `postgres_database` | PostgreSQL role phases |
+| `rabbitmq_install`, `rabbitmq_configure` | RabbitMQ role phases |
+| `freeswitch_install`, `freeswitch_configure` | FreeSWITCH role phases |
+| `rtpengine_install`, `rtpengine_configure` | RTPEngine role phases |
+| `opensips_install`, `opensips_configure`, `opensips_fail2ban` | OpenSIPS role phases |
+| `nginx_install`, `nginx_configure` | NGINX role phases |
+| `grafana_install`, `grafana_configure`, `grafana_dashboards` | Grafana role phases |
+| `webitel_*_install`, `webitel_*_configure` | Per-service Webitel role phases |
+
+Example — re-run only configuration for nginx and webitel_core:
+
+```bash
+ansible-playbook -i inventories/production site.yml \
+  --tags nginx_configure,webitel_core_configure --ask-vault-pass
+```
+
