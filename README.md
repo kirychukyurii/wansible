@@ -1,6 +1,6 @@
 <div align="center">
   <h2>
-    Webitel 26.4
+    Webitel 26.6
   </h2>
 
   <a href="https://github.com/kirychukyurii/wansible/actions?query=workflow%3Areviewdog+event%3Apush+branch%3Amain">
