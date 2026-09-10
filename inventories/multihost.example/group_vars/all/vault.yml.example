@@ -1,3 +1,8 @@
+---
+# Скопіюйте у vault.yml та зашифруйте: ansible-vault encrypt group_vars/all/vault.yml
+vault_webitel_repo_s3_access_key: CHANGE_ME
+vault_webitel_repo_s3_secret_key: CHANGE_ME
+vault_freeswitch_signalwire_key: pat_CHANGE_ME
 vault_webitel_cookie_seed: CHANGE_ME_to_a_random_secret
 
 # Grafana admin web-логін (опційно; не задано → дефолт webitel)
