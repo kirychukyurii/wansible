@@ -135,8 +135,8 @@ all:
 ```
 
 The full set of values `services` accepts lives in
-[`playbooks/vars/known_services.yml`](playbooks/vars/known_services.yml). Preflight
-validates against that file, so it cannot fall out of date the way a second copy here would.
+[`playbooks/vars/known_services.yml`](playbooks/vars/known_services.yml); preflight rejects
+anything not on that list.
 
 Inspect the resulting groups at any time:
 
