@@ -14,7 +14,6 @@
   * [Deployment profiles](#deployment-profiles)
   * [Inventory model](#inventory-model)
   * [Services](#services)
-  * [Key variables](#key-variables)
   * [Tags](#tags)
   * [Vault usage](#vault-usage)
 <!-- TOC -->
@@ -50,6 +49,11 @@ ansible-playbook -i inventories/production site.yml --ask-vault-pass
 ```
 
 For a multi-host deployment use `inventories/multihost.example` as the starting template instead.
+
+Every tunable is documented where you set it: cluster-wide ones are commented in place in
+each example's `group_vars/all/main.yml`, role-specific ones in `roles/<name>/defaults/main.yml`.
+CI syntax-checks and validates the examples on every push, so unlike a table in this file
+they cannot drift away from the code.
 
 ## Deployment profiles
 
@@ -233,42 +237,6 @@ The table below lists every supported service value for the `services` host vari
 | `webitel_cases` | Webitel Cases (CRM cases) |
 | `webitel_media_exporter` | Webitel Media Exporter (recording export) |
 | `webitel_frontend` | Webitel frontend web applications |
-
-## Key variables
-
-Set these in `inventories/production/group_vars/all.yml` (plain values) and
-`inventories/production/group_vars/all/vault.yml` (secrets, encrypted with `ansible-vault`).
-
-| Variable | Default | Description |
-|---|---|---|
-| `webitel_version` | `"26.6"` | Webitel release version |
-| `webitel_repo_s3_access_key` | — (required) | S3 APT repo AWS AccessKeyId |
-| `webitel_repo_s3_secret_key` | — (required) | S3 APT repo AWS SecretAccessKey |
-| `webitel_repo_s3_bucket` | `webitel-apt-repo` | S3 bucket name |
-| `webitel_repo_s3_region` | `eu-central-1` | S3 region |
-| `freeswitch_signalwire_key` | — (required) | SignalWire Personal Access Token |
-| `nginx_letsencrypt` | `false` | Enable Let's Encrypt TLS certificate |
-| `nginx_site_name` | `webitel.example.com` | Public FQDN for NGINX and Let's Encrypt |
-| `nginx_mail_address` | `cloud@example.com` | Email address for Let's Encrypt registration |
-| `rtpengine_mode` | `global` | `global` (public IP via ipify) or `local` |
-| `grafana_basic_dashboards` | `false` | Import pre-built Grafana dashboards |
-| `grafana_basic_dashboards_language` | `en` | Dashboard language (`en`) |
-| `datacenter` | `dc1` | Consul datacenter name |
-
-### HTTP proxy (install-time)
-
-If internet access goes through a corporate proxy, set these in the inventory's
-`group_vars/all`:
-
-```yaml
-http_proxy:  "http://proxy.example.com:3128"
-https_proxy: "http://proxy.example.com:3128"   # optional; defaults to http_proxy
-proxy_no_proxy_extra: []                          # optional
-```
-
-Applies only to the install phase (apt, GPG key downloads, apt-transport-s3). `no_proxy` is
-built automatically (`localhost`, `.consul`, all cluster host IPs). Leave unset for direct
-internet access.
 
 ## Tags
 
