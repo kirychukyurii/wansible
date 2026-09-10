@@ -52,15 +52,6 @@ ansible-vault encrypt inventories/production/group_vars/all/vault.yml
 ansible-playbook -i inventories/production site.yml --ask-vault-pass
 ```
 
-Step 2 picks the shape: `multihost.example` for several hosts in one datacenter,
-`failover.example` for an HA cluster, `warm-standby-2dc.example` for two datacenters —
-in the multi-DC case step 3 is also where you set each host's real IP and `datacenter` label.
-
-Every tunable is documented where you set it: cluster-wide ones are commented in place in
-each example's `group_vars/all/main.yml`, role-specific ones in `roles/<name>/defaults/main.yml`.
-CI syntax-checks and validates the examples on every push, so unlike a table in this file
-they cannot drift away from the code.
-
 ## Deployment profiles
 
 Every inventory declares what it is via `topology_profile` in
@@ -69,6 +60,7 @@ the declared profile, so unsupported shapes fail before the first package is ins
 
 | | `singlehost` | `multihost` | `failover` | `warm_standby` | `stretch` |
 |---|---|---|---|---|---|
+| **Example inventory** | `singlehost.example` | `multihost.example` | `failover.example` | `warm-standby-2dc.example` | none yet |
 | **Datacenters** | 1 (single host) | 1 | 1 | 2+ | 3+ |
 | **PostgreSQL** | standalone | standalone | one Patroni cluster | primary + N standby clusters | one cluster across all DCs |
 | **Consul** | 1 server, loopback | 1 server | 1 cluster, 3+, odd | isolated cluster per DC | one raft, three fault domains |
