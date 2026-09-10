@@ -1,0 +1,14 @@
+---
+- name: Generate CA
+  ansible.builtin.include_tasks:
+    file: ca.yml
+    apply:
+      tags: [pki_ca]
+  tags: [pki_ca]
+
+- name: Generate and distribute node certificates
+  ansible.builtin.include_tasks:
+    file: node.yml
+    apply:
+      tags: [pki_node]
+  tags: [pki_node]

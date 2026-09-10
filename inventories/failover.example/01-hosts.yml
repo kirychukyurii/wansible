@@ -1,0 +1,46 @@
+---
+all:
+  hosts:
+    ha1:
+      ansible_host: 10.0.0.11
+      patroni_priority: 3
+      services:
+        - consul_server
+        - nomad_server
+        - nomad_client
+        - patroni
+        - rabbitmq
+        - webitel_core
+        - webitel_engine
+        - webitel_call_center
+        - webitel_flow_manager
+        - webitel_storage
+        - webitel_messages
+        - webitel_logger
+        - webitel_cases
+        - nginx
+        - grafana
+        - haproxy
+    ha2:
+      ansible_host: 10.0.0.12
+      patroni_priority: 2
+      services:
+        - consul_server
+        - nomad_server
+        - nomad_client
+        - patroni
+        - rabbitmq
+        - freeswitch
+        - rtpengine
+        - opensips
+        - haproxy
+    ha3:
+      ansible_host: 10.0.0.13
+      patroni_priority: 1
+      services:
+        - consul_server
+        - nomad_server
+        - nomad_client
+        - patroni
+        - rabbitmq
+        - haproxy

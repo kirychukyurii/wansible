@@ -1,0 +1,11 @@
+---
+webitel_frontend_packages:
+  - webitel-auth-app
+  - webitel-admin-app
+  - webitel-agent-workspace-app
+  - webitel-supervisor-workspace-app
+  - webitel-flow-diagram-app
+  - webitel-history-app
+  - webitel-audit-app
+  - webitel-web-widget-app
+  - webitel-crm-app

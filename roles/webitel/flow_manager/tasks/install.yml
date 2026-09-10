@@ -1,8 +1,0 @@
----
-- name: Install webitel_flow_manager
-  ansible.builtin.apt:
-    name:
-      - webitel-flow-manager
-    state: latest
-    update_cache: false
-    install_recommends: false

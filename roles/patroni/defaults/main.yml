@@ -1,0 +1,32 @@
+---
+patroni_major: "{{ pg_major }}"
+patroni_scope: "{{ webitel_patroni_scope }}"
+patroni_cluster_hosts: >-
+  {{ groups['patroni'] | default([])
+     | map('extract', hostvars)
+     | selectattr('datacenter', 'defined')
+     | selectattr('datacenter', '==', datacenter)
+     | map(attribute='inventory_hostname') | list
+     or groups['patroni'] | default([]) }}
+patroni_node_ip: "{{ ansible_facts.default_ipv4.address }}"
+patroni_failover_priority: "{{ hostvars[inventory_hostname].patroni_priority | default(1) }}"
+patroni_consul_host: "127.0.0.1:8500"
+patroni_tls_enabled: "{{ consul_pki_enabled | default(false) }}"
+patroni_ssl_dir: "{{ pki_remote_dir }}"
+patroni_superuser_user: admin
+patroni_superuser_password: "{{ vault_patroni_superuser_password | default('webitel') }}"
+patroni_replication_user: replication
+patroni_replication_password: "{{ vault_patroni_replication_password | default('webitel') }}"
+patroni_rewind_user: rewind
+patroni_rewind_password: "{{ vault_patroni_rewind_password | default('webitel') }}"
+patroni_restapi_user: patroni
+patroni_restapi_password: "{{ vault_patroni_restapi_password | default('webitel') }}"
+patroni_app_user: "{{ webitel_pg_user }}"
+# Comma-separated primary-DC node IPs; Patroni adds target_session_attrs=read-write
+# so libpq follows the real primary leader across failover. No replication slot.
+patroni_is_standby: "{{ patroni_is_standby_dc | default(false) }}"
+patroni_standby_cluster_host: >-
+  {{ _topology_patroni_primary_hosts | default([])
+     | map('extract', hostvars, ['ansible_default_ipv4', 'address'])
+     | join(',') }}
+patroni_standby_cluster_port: 5432

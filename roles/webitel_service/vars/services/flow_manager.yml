@@ -1,0 +1,20 @@
+---
+webitel_service_spec:
+  package: webitel-flow-manager
+  units: [webitel-flow-manager]
+  env_files:
+    - path: /etc/default/webitel-flow-manager
+      env:
+        CONSUL: "{{ webitel_consul_address }}:8500"
+        AMQP: "{{ webitel_amqp_url }}?heartbeat={{ webitel_flow_manager_amqp_heartbeat | default(webitel_amqp_heartbeat) }}"
+        DATA_SOURCE: "{{ webitel_pg_dsn_base }}\
+          ?sslmode={{ webitel_flow_manager_pg_sslmode | default(webitel_pg_sslmode) }}\
+          &connect_timeout={{ webitel_flow_manager_pg_connect_timeout | default(webitel_pg_connect_timeout) }}"
+        SQL_DATA_SOURCE_REPLICAS: "{{ webitel_pg_dsn_replicas }}\
+          ?sslmode={{ webitel_flow_manager_pg_sslmode | default(webitel_pg_sslmode) }}\
+          &connect_timeout={{ webitel_flow_manager_pg_connect_timeout | default(webitel_pg_connect_timeout) }}"
+        GRPC_ADDR: "{{ '127.0.0.1' if single_node | default(false) else ansible_facts.default_ipv4.address }}"
+        GRPC_PORT: "{{ webitel_flow_manager_grpc_port }}"
+        WEB_ADDR: "{{ '127.0.0.1' if single_node | default(false) else ansible_facts.default_ipv4.address }}:{{ webitel_flow_manager_web_port }}"
+        ELSE_PORT: "{{ webitel_flow_manager_esl_port }}"
+        LOG_LVL: "{{ webitel_flow_manager_log_level | default(webitel_log_level | default('debug')) }}"

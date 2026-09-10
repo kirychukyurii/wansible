@@ -1,0 +1,60 @@
+---
+- name: Create application user
+  community.postgresql.postgresql_user:
+    name: "{{ postgres_common_app_user }}"
+    password: "{{ postgres_common_app_password }}"
+    role_attr_flags: SUPERUSER
+    # Without this, libpq defaults dbname to login_user and fails if that user has no DB.
+    login_db: postgres
+    login_host: "{{ postgres_common_login_host | default(omit, true) }}"
+    login_user: "{{ postgres_common_login_user | default(omit, true) }}"
+    login_password: "{{ postgres_common_login_password | default(omit, true) }}"
+  become: true
+  become_user: postgres
+
+- name: Create webitel database
+  community.postgresql.postgresql_db:
+    name: "{{ postgres_common_db }}"
+    owner: "{{ postgres_common_app_user }}"
+    login_host: "{{ postgres_common_login_host | default(omit, true) }}"
+    login_user: "{{ postgres_common_login_user | default(omit, true) }}"
+    login_password: "{{ postgres_common_login_password | default(omit, true) }}"
+  become: true
+  become_user: postgres
+  register: postgres_common_create_db
+
+# webitel-postgresql-migrations-{N} ships this dir mode 644, non-traversable.
+- name: Ensure webitel SQL directory is traversable
+  ansible.builtin.file:
+    path: "/usr/share/postgresql/{{ pg_major }}/webitel"
+    state: directory
+    mode: "0755"
+    recurse: false
+
+# Gate on actual schema presence, not create_db's changed (false for pre-existing empty DBs).
+- name: Check whether the webitel database already has tables
+  community.postgresql.postgresql_query:
+    db: "{{ postgres_common_db }}"
+    login_host: "{{ postgres_common_login_host | default(omit, true) }}"
+    login_user: "{{ postgres_common_login_user | default(omit, true) }}"
+    login_password: "{{ postgres_common_login_password | default(omit, true) }}"
+    query: >-
+      SELECT count(*) AS n FROM pg_catalog.pg_tables
+      WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+  become: true
+  become_user: postgres
+  register: postgres_common_existing_tables
+
+- name: Restore webitel schema and data
+  community.postgresql.postgresql_db:
+    name: "{{ postgres_common_db }}"
+    owner: "{{ postgres_common_app_user }}"
+    state: restore
+    target: "{{ item }}"
+    login_host: "{{ postgres_common_login_host | default(omit, true) }}"
+    login_user: "{{ postgres_common_login_user | default(omit, true) }}"
+    login_password: "{{ postgres_common_login_password | default(omit, true) }}"
+  loop: "{{ postgres_common_schema_files }}"
+  become: true
+  become_user: postgres
+  when: (postgres_common_existing_tables.query_result[0].n | int) == 0

@@ -1,0 +1,12 @@
+---
+webitel_service_spec:
+  package: webitel-media-exporter
+  units: [webitel-media-exporter]
+  env_files:
+    - path: /etc/default/webitel-media-exporter
+      env:
+        CONSUL: "{{ webitel_consul_address }}:8500"
+        DATA_SOURCE: "{{ webitel_pg_dsn_base }}?application_name=media_exporter\
+          &sslmode={{ webitel_media_exporter_pg_sslmode | default(webitel_pg_sslmode) }}\
+          &connect_timeout={{ webitel_media_exporter_pg_connect_timeout | default(webitel_pg_connect_timeout) }}"
+        GRPC_ADDR: "{{ '127.0.0.1' if single_node | default(false) else ansible_facts.default_ipv4.address }}:{{ webitel_media_exporter_grpc_port }}"

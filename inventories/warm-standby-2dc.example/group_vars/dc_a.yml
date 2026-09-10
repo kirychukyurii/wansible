@@ -1,0 +1,5 @@
+---
+# dnsmasq forwards everything here except the .consul zone.
+dns_upstream_servers:
+  - 10.1.0.2          # dc_a DNS server
+  # - 1.1.1.1         # optional public fallback

@@ -1,0 +1,8 @@
+---
+postgres_major: "{{ pg_major }}"   # 15 on Debian 12, 18 on Debian 13
+postgres_listen_addresses: >-
+  {{ 'localhost' if single_node | default(false)
+     else 'localhost,' + ansible_facts.default_ipv4.address }}
+postgres_max_connections: 150
+postgres_db: webitel
+postgres_helper_sql: "/usr/share/postgresql/{{ postgres_major }}/webitel/database_helper.sql"

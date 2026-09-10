@@ -1,9 +1,48 @@
 ---
-- name: Install rabbitmq-server package
+# bookworm's main repo lacks a modern Erlang/OTP, so it needs the extra
+# erlang repo below; trixie's main already ships OTP 27.
+- name: Download Team RabbitMQ signing key
+  ansible.builtin.get_url:
+    url: https://keys.openpgp.org/vks/v1/by-fingerprint/0A9AF2115F4687BD29803A206B73A36E6026DFCA
+    dest: "{{ rabbitmq_keyring }}"
+    mode: "0644"
+  register: rabbitmq_team_key
+  until: rabbitmq_team_key is succeeded
+  retries: 5
+  delay: 2
+
+- name: Add RabbitMQ Erlang repository (bookworm only)
+  ansible.builtin.deb822_repository:
+    name: rabbitmq-erlang
+    types: [deb]
+    uris:
+      - "https://deb1.rabbitmq.com/rabbitmq-erlang/debian/bookworm"
+      - "https://deb2.rabbitmq.com/rabbitmq-erlang/debian/bookworm"
+    suites: bookworm
+    components: main
+    signed_by: "{{ rabbitmq_keyring }}"
+    architectures: amd64
+    state: present
+    enabled: true
+  when: ansible_facts.distribution_release == 'bookworm'
+
+- name: Add RabbitMQ server repository
+  ansible.builtin.deb822_repository:
+    name: rabbitmq-server
+    types: [deb]
+    uris:
+      - "https://deb1.rabbitmq.com/rabbitmq-server/debian/{{ ansible_facts.distribution_release }}"
+      - "https://deb2.rabbitmq.com/rabbitmq-server/debian/{{ ansible_facts.distribution_release }}"
+    suites: "{{ ansible_facts.distribution_release }}"
+    components: main
+    signed_by: "{{ rabbitmq_keyring }}"
+    architectures: amd64
+    state: present
+    enabled: true
+
+- name: Install rabbitmq-server
   ansible.builtin.apt:
     name: rabbitmq-server
-    update_cache: false
-
-- name: Get rabbitmq version
-  ansible.builtin.command: rabbitmqctl version
-  register: rabbitmq_version
+    state: present
+    install_recommends: false
+    update_cache: true

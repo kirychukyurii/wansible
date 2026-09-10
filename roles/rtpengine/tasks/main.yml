@@ -1,10 +1,14 @@
 ---
-- when: inventory_hostname in groups['rtpengine']
-  block:
-    - ansible.builtin.include_tasks: install.yml
-      tags:
-        - rtpengine_install
+- name: Install RTPEngine and sipwise repository
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [rtpengine_install]
+  tags: [rtpengine_install]
 
-    - ansible.builtin.include_tasks: configure.yml
-      tags:
-        - rtpengine_configure
+- name: Configure RTPEngine
+  ansible.builtin.include_tasks:
+    file: configure.yml
+    apply:
+      tags: [rtpengine_configure]
+  tags: [rtpengine_configure]

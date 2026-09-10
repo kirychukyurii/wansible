@@ -1,0 +1,26 @@
+---
+- name: Install certbot
+  ansible.builtin.apt:
+    name: python3-certbot-nginx
+    state: present
+    install_recommends: false
+
+- name: Set server_name in site config
+  ansible.builtin.replace:
+    path: /etc/nginx/sites-enabled/default
+    regexp: '(server_name )[^;]*(;)'
+    replace: '\g<1>{{ nginx_site_name }}\g<2>'
+  notify: restart nginx
+
+- name: Obtain certificate
+  ansible.builtin.command:
+    cmd: >-
+      certbot --nginx -d {{ nginx_site_name }} -m {{ nginx_mail_address }}
+      --agree-tos --noninteractive --redirect
+    creates: /etc/letsencrypt/live/{{ nginx_site_name }}/fullchain.pem
+
+- name: Monthly renewal cron
+  ansible.builtin.cron:
+    name: letsencrypt_renewal
+    special_time: monthly
+    job: /usr/bin/certbot renew

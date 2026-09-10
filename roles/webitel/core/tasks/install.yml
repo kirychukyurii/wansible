@@ -1,8 +1,0 @@
----
-- name: Install webitel_core
-  ansible.builtin.apt:
-    name:
-      - webitel-core
-    state: latest
-    update_cache: false
-    install_recommends: false

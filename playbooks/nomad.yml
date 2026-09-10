@@ -1,0 +1,17 @@
+---
+- name: Resolve cluster topology facts
+  ansible.builtin.import_playbook: topology.yml
+
+- name: Nomad servers
+  hosts: nomad_server
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles: [nomad]
+
+- name: Nomad clients
+  hosts: "nomad_client:!nomad_server"
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles: [nomad]

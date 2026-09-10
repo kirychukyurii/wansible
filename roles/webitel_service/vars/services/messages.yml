@@ -1,0 +1,29 @@
+---
+# v26.04: webitel-messages-srv = chat manager core, webitel-messages-bot = bot
+# gateway + HTTP webhook listener. Shared infra keys duplicated in both.
+webitel_messages_bind_host: "{{ '127.0.0.1' if single_node | default(false) else ansible_facts.default_ipv4.address }}" # noqa: var-naming[no-role-prefix]
+webitel_service_spec:
+  package: webitel-messages
+  units: [webitel-messages-srv, webitel-messages-bot]
+  env_files:
+    - path: /etc/default/webitel-messages-srv
+      env:
+        WEBITEL_DBO_ADDRESS: "{{ webitel_pg_dsn_base }}\
+          ?sslmode={{ webitel_messages_pg_sslmode | default(webitel_pg_sslmode) }}\
+          &connect_timeout={{ webitel_messages_pg_connect_timeout | default(webitel_pg_connect_timeout) }}"
+        MICRO_REGISTRY_ADDRESS: "{{ webitel_consul_address }}:8500"
+        MICRO_BROKER_ADDRESS: "{{ webitel_amqp_url }}?heartbeat={{ webitel_messages_amqp_heartbeat | default(webitel_amqp_heartbeat) }}"
+        MICRO_SERVICE_ADDRESS: "{{ webitel_messages_bind_host }}:{{ webitel_messages_service_port }}"
+        MICRO_LOG_LEVEL: "{{ webitel_messages_log_level | default(webitel_log_level | default('info')) }}"
+    - path: /etc/default/webitel-messages-bot
+      env:
+        WEBITEL_DBO_ADDRESS: "{{ webitel_pg_dsn_base }}\
+          ?sslmode={{ webitel_messages_pg_sslmode | default(webitel_pg_sslmode) }}\
+          &connect_timeout={{ webitel_messages_pg_connect_timeout | default(webitel_pg_connect_timeout) }}"
+        MICRO_REGISTRY_ADDRESS: "{{ webitel_consul_address }}:8500"
+        MICRO_BROKER_ADDRESS: "{{ webitel_amqp_url }}?heartbeat={{ webitel_messages_amqp_heartbeat | default(webitel_amqp_heartbeat) }}"
+        MICRO_LOG_LEVEL: "{{ webitel_messages_log_level | default(webitel_log_level | default('info')) }}"
+        WEBITEL_BOT_ADDRESS: "{{ webitel_messages_bind_host }}:{{ webitel_messages_bot_port }}"
+        WEBITEL_BOT_PROXY: "{{ webitel_public_url }}/"
+        # gRPC (micro), distinct from WEBITEL_BOT_ADDRESS above (HTTP webhooks).
+        MICRO_SERVICE_ADDRESS: "{{ webitel_messages_bind_host }}:{{ webitel_messages_bot_service_port }}"

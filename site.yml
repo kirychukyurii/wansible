@@ -1,0 +1,31 @@
+---
+
+- name: Import preflight checks
+  ansible.builtin.import_playbook: playbooks/preflight.yml
+
+- name: Import base system configuration
+  ansible.builtin.import_playbook: playbooks/base.yml
+
+- name: Import PKI
+  ansible.builtin.import_playbook: playbooks/pki.yml
+
+- name: Import infrastructure setup (consul + nomad)
+  ansible.builtin.import_playbook: playbooks/infra.yml
+
+- name: Import HAProxy load balancer
+  ansible.builtin.import_playbook: playbooks/haproxy.yml
+
+- name: Import database setup
+  ansible.builtin.import_playbook: playbooks/database.yml
+
+- name: Import messaging setup
+  ansible.builtin.import_playbook: playbooks/messaging.yml
+
+- name: Import voice setup
+  ansible.builtin.import_playbook: playbooks/voice.yml
+
+- name: Import webitel
+  ansible.builtin.import_playbook: playbooks/webitel.yml
+
+- name: Import web
+  ansible.builtin.import_playbook: playbooks/web.yml

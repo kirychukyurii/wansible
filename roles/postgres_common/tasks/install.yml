@@ -1,0 +1,51 @@
+---
+- name: Download PGDG GPG key
+  ansible.builtin.get_url:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    dest: /tmp/pgdg.asc
+    mode: "0644"
+
+- name: Dearmor PGDG key
+  ansible.builtin.command:
+    cmd: gpg --batch --yes --dearmor -o {{ postgres_common_pgdg_keyring }} /tmp/pgdg.asc
+    creates: "{{ postgres_common_pgdg_keyring }}"
+
+- name: Download TimescaleDB GPG key
+  ansible.builtin.get_url:
+    url: https://packagecloud.io/timescale/timescaledb/gpgkey
+    dest: /tmp/timescaledb.asc
+    mode: "0644"
+
+- name: Dearmor TimescaleDB key
+  ansible.builtin.command:
+    cmd: gpg --batch --yes --dearmor -o {{ postgres_common_timescale_keyring }} /tmp/timescaledb.asc
+    creates: "{{ postgres_common_timescale_keyring }}"
+
+- name: Add PGDG repository
+  ansible.builtin.deb822_repository:
+    name: postgresql
+    types: [deb]
+    uris: "http://apt.postgresql.org/pub/repos/apt/"
+    suites: "{{ ansible_facts.distribution_release }}-pgdg"
+    components: main
+    signed_by: "{{ postgres_common_pgdg_keyring }}"
+    state: present
+    enabled: true
+
+- name: Add TimescaleDB repository
+  ansible.builtin.deb822_repository:
+    name: timescaledb
+    types: [deb]
+    uris: "https://packagecloud.io/timescale/timescaledb/debian/"
+    suites: "{{ ansible_facts.distribution_release }}"
+    components: main
+    signed_by: "{{ postgres_common_timescale_keyring }}"
+    state: present
+    enabled: true
+
+- name: Install PostgreSQL, TimescaleDB and webitel base packages
+  ansible.builtin.apt:
+    name: "{{ postgres_common_base_packages }}"
+    state: present
+    install_recommends: false
+    update_cache: true

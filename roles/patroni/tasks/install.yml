@@ -1,0 +1,17 @@
+---
+- name: Install Patroni and Consul integration packages
+  ansible.builtin.apt:
+    name:
+      - patroni
+      - python3-consul
+    state: present
+    install_recommends: false
+    update_cache: true
+
+# Safeguard against re-runs/leftovers competing with Patroni for :5432.
+- name: Stop and disable native postgresql unit (Patroni manages PostgreSQL)
+  ansible.builtin.systemd_service:
+    name: postgresql
+    enabled: false
+    state: stopped
+  failed_when: false

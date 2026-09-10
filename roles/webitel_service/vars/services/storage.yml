@@ -1,0 +1,24 @@
+---
+webitel_service_spec:
+  package: webitel-storage
+  units: [webitel-storage]
+  env_files:
+    - path: /etc/default/webitel-storage
+      env:
+        CONSUL: "{{ webitel_consul_address }}:8500"
+        MESSAGE_BROKER_URL: "{{ webitel_amqp_url }}?heartbeat={{ webitel_storage_amqp_heartbeat | default(webitel_amqp_heartbeat) }}"
+        DATA_SOURCE: "{{ webitel_pg_dsn_base }}?application_name=storage\
+          &sslmode={{ webitel_storage_pg_sslmode | default(webitel_pg_sslmode) }}\
+          &connect_timeout={{ webitel_storage_pg_connect_timeout | default(webitel_pg_connect_timeout) }}"
+        SQL_DATA_SOURCE_REPLICAS: "{{ webitel_pg_dsn_replicas }}?application_name=storage\
+          &sslmode={{ webitel_storage_pg_sslmode | default(webitel_pg_sslmode) }}\
+          &connect_timeout={{ webitel_storage_pg_connect_timeout | default(webitel_pg_connect_timeout) }}"
+        GRPC_ADDR: "{{ '127.0.0.1' if single_node | default(false) else ansible_facts.default_ipv4.address }}"
+        GRPC_PORT: "{{ webitel_storage_grpc_port }}"
+        PUBLIC_ADDRESS: ":{{ webitel_storage_public_port }}"
+        INTERNAL_ADDRESS: ":{{ webitel_storage_internal_port }}"
+        # TEMP_DIRECTORY untouched: unit's ProtectSystem=strict only allows writes
+        # under /opt/storage, CacheDir, LogsDir, so it must stay at the systemd-managed default.
+        MEDIA_DIRECTORY: "{{ webitel_storage_media_directory | default('/opt/storage/data') }}"
+        PUBLIC_HOST: "{{ webitel_public_url }}"
+        LOG_LVL: "{{ webitel_storage_log_level | default(webitel_log_level | default('debug')) }}"

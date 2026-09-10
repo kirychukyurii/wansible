@@ -1,0 +1,27 @@
+---
+nomad_datacenter: "{{ datacenter }}"
+nomad_region: "{{ nomad_region_name | default('global') }}"
+nomad_is_server: "{{ inventory_hostname in (groups['nomad_server'] | default([])) }}"
+nomad_is_client: "{{ inventory_hostname in (groups['nomad_client'] | default([])) }}"
+nomad_server_hosts: >-
+  {{ groups['nomad_server'] | default([])
+     | map('extract', hostvars)
+     | selectattr('datacenter', 'defined')
+     | selectattr('datacenter', '==', nomad_datacenter)
+     | map(attribute='inventory_hostname') | list
+     or groups['nomad_server'] | default([]) }}
+# Unlike consul's client_addr, bind_addr takes a single address, not a list.
+# Advertise address is derived automatically from the private IP.
+nomad_bind_address: "0.0.0.0"
+nomad_consul_address: "127.0.0.1:8500"
+nomad_data_dir: /opt/nomad/data
+nomad_plugin_dir: /opt/nomad/plugins
+nomad_node_meta: {}            # e.g. {services: "webitel-app"}
+# apt | url | none
+nomad_systemd_driver_install: none
+nomad_systemd_driver_url: ""   # used when nomad_systemd_driver_install == url
+nomad_keyring: /usr/share/keyrings/hashicorp-archive-keyring.gpg
+nomad_tls_enabled: "{{ consul_pki_enabled | default(false) }}"
+nomad_ca_file: "{{ pki_remote_dir }}/ca.pem"
+nomad_cert_file: "{{ pki_remote_dir }}/{{ inventory_hostname }}.pem"
+nomad_key_file: "{{ pki_remote_dir }}/{{ inventory_hostname }}-key.pem"

@@ -1,10 +1,26 @@
 ---
-- when: inventory_hostname in groups['consul']
-  block:
-    - ansible.builtin.include_tasks: install.yml
-      tags:
-        - consul_install
+- name: Install consul
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [consul_install]
+  tags: [consul_install]
 
-    - ansible.builtin.include_tasks: configure.yml
-      tags:
-        - consul_configure
+- name: Configure consul
+  ansible.builtin.include_tasks:
+    file: configure.yml
+    apply:
+      tags: [consul_configure]
+  tags: [consul_configure]
+
+- name: Configure consul DNS forwarding
+  ansible.builtin.include_tasks:
+    file: dns.yml
+    apply:
+      tags: [consul_dns]
+  when: consul_dns_forward | bool
+  tags: [consul_dns]
+
+# Prepared queries aren't created here: with serial: 1, run_once would fire on the
+# first node, before the cluster has formed. Done in a separate play at the end of
+# consul.yml instead.

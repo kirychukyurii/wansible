@@ -1,0 +1,25 @@
+---
+- name: Render patroni config
+  ansible.builtin.template:
+    src: patroni.yml.j2
+    dest: /etc/patroni/config.yml
+    owner: postgres
+    group: postgres
+    mode: "0640"
+  notify: restart patroni
+
+# Without this, restapi TLS fails with PermissionError reading the PKI keyfile (mode 0640).
+- name: Add postgres user to the PKI cert-reader group
+  ansible.builtin.user:
+    name: postgres
+    groups: "{{ pki_cert_group }}"
+    append: true
+  when: patroni_tls_enabled | default(false) | bool
+  notify: restart patroni
+
+- name: Enable and start patroni
+  ansible.builtin.systemd_service:
+    name: patroni
+    enabled: true
+    state: started
+    daemon_reload: true

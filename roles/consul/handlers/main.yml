@@ -1,0 +1,24 @@
+---
+- name: Restart consul
+  ansible.builtin.systemd_service:
+    name: consul
+    state: restarted
+    daemon_reload: true
+    no_block: true
+  listen: restart consul
+
+- name: Wait for consul after restart
+  ansible.builtin.command:
+    cmd: consul members
+  register: consul_restart_members
+  changed_when: false
+  retries: 30
+  delay: 2
+  until: consul_restart_members.rc == 0
+  listen: restart consul
+
+- name: Restart dnsmasq
+  ansible.builtin.systemd_service:
+    name: dnsmasq
+    state: restarted
+  listen: restart dnsmasq

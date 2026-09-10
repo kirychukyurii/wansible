@@ -1,23 +1,33 @@
 ---
+- name: Download OpenSIPS APT GPG key
+  ansible.builtin.get_url:
+    url: https://apt.opensips.org/pubkey.gpg
+    dest: /tmp/opensips.gpg.asc
+    mode: "0644"
+  register: opensips_gpg_download
+  until: opensips_gpg_download is succeeded
+  retries: 5
+  delay: 2
+
+- name: Dearmor OpenSIPS GPG key
+  ansible.builtin.command:
+    cmd: gpg --batch --yes --dearmor -o {{ opensips_keyring }} /tmp/opensips.gpg.asc
+    creates: "{{ opensips_keyring }}"
+
+- name: Add OpenSIPS APT repository
+  ansible.builtin.deb822_repository:
+    name: opensips
+    types: [deb]
+    uris: "https://apt.opensips.org"
+    suites: "{{ ansible_facts.distribution_release }}"
+    components: "{{ opensips_version }}-releases"
+    signed_by: "{{ opensips_keyring }}"
+    state: present
+    enabled: true
+
 - name: Install OpenSIPS packages
   ansible.builtin.apt:
-    name:
-      - opensips
-      - opensips-http-modules
-      - opensips-postgres-module
-      - opensips-presence-modules
-      - opensips-rabbitmq-modules
-      - opensips-wss-module
-      - opensips-tls-module
-      - opensips-tlsmgm-module
-      - opensips-xmlrpc-module
-    state: latest
+    name: "{{ opensips_packages }}"
+    state: present
     install_recommends: false
-    update_cache: false
-
-- name: Enable OpenSIPS at startup (systemd)
-  ansible.builtin.systemd:
-    name: opensips
-    enabled: true
-  when:
-    - ansible_service_mgr == "systemd"
+    update_cache: true

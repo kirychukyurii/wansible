@@ -1,14 +1,36 @@
 ---
-- name: Get kernel version
-  ansible.builtin.command: uname -r
-  register: kernel_version
+- name: Download ngcp-keyring-latest.deb
+  ansible.builtin.get_url:
+    url: https://deb.sipwise.com/spce/ngcp-keyring-latest.deb
+    dest: /tmp/ngcp-keyring-latest.deb
+    mode: "0644"
+    force: false
+  register: rtpengine_keyring_download
+  until: rtpengine_keyring_download is succeeded
+  retries: 5
+  delay: 2
 
-- name: Install rtpengine packages
+- name: Install ngcp-keyring package
+  ansible.builtin.apt:
+    deb: /tmp/ngcp-keyring-latest.deb
+    state: present
+
+- name: Add RTPEngine sipwise APT repository
+  ansible.builtin.deb822_repository:
+    name: rtpengine
+    types: [deb]
+    uris: "https://deb.sipwise.com/spce/{{ rtpengine_sipwise_release }}"
+    suites: "{{ ansible_facts.distribution_release }}"
+    components: main
+    state: present
+    enabled: true
+
+- name: Install RTPEngine packages
   ansible.builtin.apt:
     name:
       - libspandsp2
       - ngcp-rtpengine
-      - linux-headers-{{ kernel_version.stdout }}
-    state: latest
+      - "linux-headers-{{ ansible_facts.kernel }}"
+    state: present
     install_recommends: false
-    update_cache: false
+    update_cache: true

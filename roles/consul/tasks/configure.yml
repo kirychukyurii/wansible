@@ -1,50 +1,48 @@
 ---
-- name: Add Consul group
-  ansible.builtin.group:
-    name: consul
-    state: present
-
-- name: Add Consul user
-  ansible.builtin.user:
-    name: consul
-    comment: Consul user
-    group: consul
-    home: /etc/consul.d
-    shell: /bin/false
-    system: true
-
-- name: Create consul log directory
+- name: Create consul data directory
   ansible.builtin.file:
-    dest: /var/consul
+    path: "{{ consul_data_dir }}"
     state: directory
     owner: consul
     group: consul
+    mode: "0750"
 
-- name: Create consul config.json
+- name: Render consul configuration
   ansible.builtin.template:
-    src: templates/consul_config.json.j2
-    dest: /etc/consul.d/config.json
+    src: consul.hcl.j2
+    dest: "{{ consul_config_dir }}/consul.hcl"
     owner: consul
     group: consul
-    mode: "0644"
+    mode: "0640"
+  notify: restart consul
 
-- name: Create systemd script
-  ansible.builtin.template:
-    src: templates/consul_systemd.service.j2
-    dest: /lib/systemd/system/consul.service
-    owner: root
-    group: root
-    mode: "0644"
-  register: systemd_unit
-  when:
-    - ansible_service_mgr == "systemd"
+- name: Remove package default config (replaced by consul.hcl)
+  ansible.builtin.file:
+    path: "{{ consul_config_dir }}/consul.json"
+    state: absent
 
-- name: Enable consul at startup (systemd)
-  ansible.builtin.systemd:
+# Node key is 0640 root:{{ pki_cert_group }}; consul needs group membership to read it.
+- name: Add consul user to the PKI cert-reader group
+  ansible.builtin.user:
+    name: consul
+    groups: "{{ pki_cert_group }}"
+    append: true
+  when: consul_tls_enabled | default(false) | bool
+  notify: restart consul
+
+- name: Enable and start consul
+  ansible.builtin.systemd_service:
     name: consul
     enabled: true
-    state: restarted
+    state: started
     daemon_reload: true
-  when:
-    - ansible_service_mgr == "systemd"
-    - systemd_unit is changed
+    no_block: true
+
+- name: Wait for consul agent
+  ansible.builtin.command:
+    cmd: consul members
+  register: consul_members
+  changed_when: false
+  retries: 30
+  delay: 2
+  until: consul_members.rc == 0

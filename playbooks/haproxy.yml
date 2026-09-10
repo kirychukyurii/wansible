@@ -1,0 +1,10 @@
+---
+- name: Resolve cluster topology facts
+  ansible.builtin.import_playbook: topology.yml
+
+- name: HAProxy load balancer (PostgreSQL + RabbitMQ)
+  hosts: haproxy
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles: [haproxy]

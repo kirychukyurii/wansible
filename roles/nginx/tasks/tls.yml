@@ -1,0 +1,142 @@
+---
+# provided/self_signed only — letsencrypt is handled by the certbot role from playbooks/web.yml.
+
+- name: Ensure TLS directory exists
+  ansible.builtin.file:
+    path: "{{ nginx_tls_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: nginx_tls_mode in ['provided', 'self_signed']
+
+- name: Ensure python-cryptography is present (required by community.crypto on target)
+  ansible.builtin.apt:
+    name: python3-cryptography
+    state: present
+    install_recommends: false
+  when: nginx_tls_mode == 'self_signed'
+
+- name: Generate self-signed private key
+  community.crypto.openssl_privatekey:
+    path: "{{ nginx_tls_key_path }}"
+    type: "{{ nginx_tls_self_signed_key_type }}"
+    size: "{{ nginx_tls_self_signed_key_size }}"
+    mode: "0640"
+  when: nginx_tls_mode == 'self_signed'
+
+- name: Generate self-signed CSR
+  community.crypto.openssl_csr:
+    path: "{{ nginx_tls_dir }}/{{ nginx_site_name }}.csr"
+    privatekey_path: "{{ nginx_tls_key_path }}"
+    common_name: "{{ nginx_site_name }}"
+    subject_alt_name:
+      - "DNS:{{ nginx_site_name }}"
+    mode: "0644"
+  when: nginx_tls_mode == 'self_signed'
+
+- name: Create self-signed certificate
+  community.crypto.x509_certificate:
+    path: "{{ nginx_tls_cert_path }}"
+    privatekey_path: "{{ nginx_tls_key_path }}"
+    csr_path: "{{ nginx_tls_dir }}/{{ nginx_site_name }}.csr"
+    provider: selfsigned
+    selfsigned_not_after: "+{{ nginx_tls_self_signed_days }}d"
+    mode: "0644"
+  when: nginx_tls_mode == 'self_signed'
+  notify: restart nginx
+
+- name: Copy provided private key
+  ansible.builtin.copy:
+    src: "{{ nginx_tls_key }}"
+    dest: "{{ nginx_tls_key_path }}"
+    owner: root
+    group: root
+    mode: "0640"
+  when:
+    - nginx_tls_mode == 'provided'
+    - nginx_tls_key | length > 0
+  notify: restart nginx
+
+- name: Copy provided certificate (full chain in one file)
+  ansible.builtin.copy:
+    src: "{{ nginx_tls_cert }}"
+    dest: "{{ nginx_tls_cert_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - nginx_tls_mode == 'provided'
+    - nginx_tls_cert | length > 0
+    - nginx_tls_chain | length == 0
+  notify: restart nginx
+
+# Rendered as content (not a staged file) so shortening the chain leaves no stale
+# fragments, and copy's content-diff keeps this idempotent.
+- name: Assemble full-chain certificate (leaf + intermediate(s))
+  ansible.builtin.copy:
+    dest: "{{ nginx_tls_cert_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |-
+      {% for f in [nginx_tls_cert] + nginx_tls_chain %}
+      {{ lookup('ansible.builtin.file', f) }}
+      {% endfor %}
+  when:
+    - nginx_tls_mode == 'provided'
+    - nginx_tls_chain | length > 0
+  notify: restart nginx
+
+# TLS directives ship commented out in the upstream template, so `replace` can't
+# enable them; blockinfile injects listen/ssl_certificate lines instead, keyed on
+# markers so re-running rewrites the block instead of duplicating it.
+- name: Set server_name in TLS server block
+  ansible.builtin.replace:
+    path: /etc/nginx/sites-enabled/default
+    regexp: '(^[ \t]*server_name )[^;]*(;)'
+    replace: '\g<1>{{ nginx_site_name }}\g<2>'
+  when: nginx_tls_mode in ['provided', 'self_signed']
+  notify: restart nginx
+
+- name: Enable TLS listener and certificate in site server block
+  ansible.builtin.blockinfile:
+    path: /etc/nginx/sites-enabled/default
+    marker: "    # {mark} ANSIBLE MANAGED — webitel tls"
+    insertafter: '^[ \t]*server_name '
+    block: |
+      listen 443 ssl http2 default_server;
+      listen [::]:443 ssl http2;
+      ssl_certificate {{ nginx_tls_cert_path }};
+      ssl_certificate_key {{ nginx_tls_key_path }};
+  when: nginx_tls_mode in ['provided', 'self_signed']
+  notify: restart nginx
+
+# Regex requires default_server, so it never matches the redirect server's `listen 80;` below.
+- name: Remove plain HTTP listener from TLS server block
+  ansible.builtin.replace:
+    path: /etc/nginx/sites-enabled/default
+    regexp: '^[ \t]*listen (\[::\]:)?80 default_server;\n'
+    replace: ''
+  when: nginx_tls_mode in ['provided', 'self_signed']
+  notify: restart nginx
+
+- name: Add HTTP→HTTPS redirect server
+  ansible.builtin.blockinfile:
+    path: /etc/nginx/sites-enabled/default
+    insertafter: EOF
+    block: |
+      server {
+          listen 80;
+          listen [::]:80;
+          server_name {{ nginx_site_name }};
+          return 301 https://$host$request_uri;
+      }
+  when: nginx_tls_mode in ['provided', 'self_signed']
+  notify: restart nginx
+
+- name: Validate nginx configuration
+  ansible.builtin.command:
+    cmd: nginx -t
+  changed_when: false
+  when: nginx_tls_mode in ['provided', 'self_signed']

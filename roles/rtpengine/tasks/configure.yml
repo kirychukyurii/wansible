@@ -1,54 +1,71 @@
 ---
-- name: Read bootstrapped state
-  ansible.builtin.stat:
-    path: /etc/rtpengine/.bootstrap
-  register: bootstrap_state
-  ignore_errors: true
-  tags: always
+- name: Fetch public IP via ipify (global mode, private interface only)
+  community.general.ipify_facts:
+  register: rtpengine_public_ip
+  until: rtpengine_public_ip is succeeded
+  retries: 5
+  delay: 2
+  when:
+    - rtpengine_mode == "global"
+    - ansible_facts.default_ipv4.address is ansible.utils.private
 
-- when: not bootstrap_state.stat.exists
-  block:
-    - name: Download rtpengine configure
-      ansible.builtin.get_url:
-        url: https://git.webitel.com/projects/WEP/repos/rtpengine/raw/rtpengine.conf
-        dest: /etc/rtpengine/rtpengine.conf
+- name: Download RTPEngine config (first run only)
+  ansible.builtin.get_url:
+    url: "{{ rtpengine_config_url }}"
+    dest: /etc/rtpengine/rtpengine.conf
+    force: false
+    mode: "0644"
+  notify: restart rtpengine
 
-    - name: Change RTP IP
-      ansible.builtin.replace:
-        path: /etc/rtpengine/rtpengine.conf
-        regexp: (1\.1\.1\.1)$
-        replace: '{{ hostvars[inventory_hostname]["ansible_default_ipv4"]["address"] }}'
-      when: rtpengine_mode == "local" or rtpengine_public_ip.ansible_facts.ipify_public_ip is not defined
+- name: Set RTP port range in rtpengine.conf
+  ansible.builtin.lineinfile:
+    path: /etc/rtpengine/rtpengine.conf
+    regexp: "^{{ item.key }}\\s*="
+    line: "{{ item.key }} = {{ item.value }}"
+    state: present
+  loop:
+    - { key: port-min, value: "{{ rtpengine_rtp_port_min }}" }
+    - { key: port-max, value: "{{ rtpengine_rtp_port_max }}" }
+  loop_control:
+    label: "{{ item.key }}"
+  notify: restart rtpengine
 
-    - name: Change RTP IP
-      ansible.builtin.lineinfile:
-        path: /etc/rtpengine/rtpengine.conf
-        state: present
-        regexp: ^interface
-        line: interface = {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}!{{ rtpengine_public_ip.ansible_facts.ipify_public_ip }}
-      when:
-        - rtpengine_public_ip.ansible_facts.ipify_public_ip is defined
-        - rtpengine_mode == "global"
+# Set interface with NAT mapping (global mode with public IP)
+- name: Set interface with public IP mapping in rtpengine.conf (global mode)
+  ansible.builtin.lineinfile:
+    path: /etc/rtpengine/rtpengine.conf
+    regexp: '^interface'
+    line: "interface = {{ ansible_facts.default_ipv4.address }}!{{ rtpengine_public_ip.ansible_facts.ipify_public_ip }}"
+    state: present
+  when:
+    - rtpengine_mode == "global"
+    - rtpengine_public_ip.ansible_facts.ipify_public_ip is defined
+  notify: restart rtpengine
 
-    - when: groups['all'] | length > 1
-      block:
-        - name: Change listen RTP IP
-          ansible.builtin.lineinfile:
-            path: /etc/rtpengine/rtpengine.conf
-            state: present
-            regexp: ^listen-ng
-            line: listen-ng = {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:60000
+# Set interface with private IP only (local mode, or global without NAT)
+- name: Set interface with private IP in rtpengine.conf (local mode)
+  ansible.builtin.replace:
+    path: /etc/rtpengine/rtpengine.conf
+    regexp: '(1\.1\.1\.1)$'
+    replace: "{{ ansible_facts.default_ipv4.address }}"
+  when: >-
+    rtpengine_mode == "local" or
+    (rtpengine_public_ip is skipped) or
+    (rtpengine_public_ip.ansible_facts.ipify_public_ip is not defined)
+  notify: restart rtpengine
 
-    - name: Enable rtpengine at startup (systemd)
-      ansible.builtin.systemd:
-        name: ngcp-rtpengine-daemon
-        enabled: true
-        daemon_reload: true
-        state: restarted
-      when:
-        - ansible_service_mgr == "systemd"
+- name: Set listen-ng address in rtpengine.conf (multi-node)
+  ansible.builtin.lineinfile:
+    path: /etc/rtpengine/rtpengine.conf
+    regexp: '^listen-ng'
+    line: "listen-ng = {{ ansible_facts.default_ipv4.address }}:60000"
+    state: present
+  when: not single_node | default(false)
+  notify: restart rtpengine
 
-    - name: Create bootstrapped state file
-      ansible.builtin.file:
-        dest: /etc/rtpengine/.bootstrap
-        state: touch
+- name: Enable and start ngcp-rtpengine-daemon
+  ansible.builtin.systemd_service:
+    name: ngcp-rtpengine-daemon
+    enabled: true
+    state: started
+    daemon_reload: true

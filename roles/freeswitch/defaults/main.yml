@@ -1,0 +1,49 @@
+---
+freeswitch_config_base_url: https://git.webitel.com/projects/WEP/repos/freeswitch/raw
+freeswitch_config_files: [mime.types, configuration.xml, freeswitch.xml, vars.xml]
+freeswitch_signalwire_keyring: /usr/share/keyrings/signalwire-freeswitch-repo.gpg
+
+# RTP media port range (must not overlap with rtpengine_rtp_port_min/max)
+freeswitch_rtp_start_port: 20000
+freeswitch_rtp_end_port: 39999
+
+# Override per-DC group_vars to separate active/standby dispatcher rows in warm-standby.
+freeswitch_dispatcher_setid: 1
+freeswitch_packages:
+  - freeswitch
+  - freeswitch-mod-av
+  - freeswitch-mod-opus
+  - freeswitch-mod-opusfile
+  - freeswitch-mod-sndfile
+  - freeswitch-mod-shout
+  - freeswitch-mod-sofia
+  - freeswitch-mod-dialplan-xml
+  - freeswitch-mod-valet-parking
+  - freeswitch-mod-conference
+  - freeswitch-mod-console
+  - freeswitch-mod-event-socket
+  - freeswitch-mod-loopback
+  - freeswitch-mod-commands
+  - freeswitch-mod-db
+  - freeswitch-mod-dptools
+  - freeswitch-mod-expr
+  - freeswitch-mod-hash
+  - freeswitch-mod-spandsp
+  - freeswitch-mod-imagick
+  - freeswitch-mod-png
+  - freeswitch-mod-native-file
+  - freeswitch-mod-logfile
+  - freeswitch-mod-local-stream
+  - freeswitch-mod-tone-stream
+  - freeswitch-mod-lua
+  - freeswitch-mod-http-cache
+  - freeswitch-mod-spy
+  - freeswitch-mod-json-cdr
+  - freeswitch-music-default
+  - freeswitch-systemd
+  - freeswitch-mod-amd
+  - freeswitch-mod-amqp
+  - freeswitch-mod-grpc
+  - freeswitch-mod-google-transcribe
+  - librabbitmq4
+  - imagemagick

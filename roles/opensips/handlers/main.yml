@@ -1,29 +1,19 @@
 ---
-- name: Reload systemd
-  ansible.builtin.systemd:
-    daemon_reload: true
-  listen: restart systemd
-
-- name: Restart logrotate
-  ansible.builtin.service:
-    name: logrotate
+- name: Restart opensips
+  ansible.builtin.systemd_service:
+    name: opensips
     state: restarted
-  listen: restart logrotate
+    daemon_reload: true
+  listen: restart opensips
 
 - name: Restart rsyslog
-  ansible.builtin.service:
+  ansible.builtin.systemd_service:
     name: rsyslog
     state: restarted
   listen: restart rsyslog
 
-- name: Restart opensips
-  ansible.builtin.service:
-    name: opensips
-    state: restarted
-  listen: restart opensips
-
 - name: Restart fail2ban
-  ansible.builtin.service:
+  ansible.builtin.systemd_service:
     name: fail2ban
     state: restarted
   listen: restart fail2ban

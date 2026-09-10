@@ -1,0 +1,12 @@
+# {{ ansible_managed }}
+listeners.tcp.1 = {{ rabbitmq_listen_address }}:5672
+management.tcp.ip = {{ '127.0.0.1' if single_node | default(false) else ansible_facts.default_ipv4.address }}
+management.tcp.port = 15672
+disk_free_limit.absolute = {{ rabbitmq_disk_free_limit }}
+{% if rabbitmq_cluster_hosts | length > 1 %}
+cluster_formation.peer_discovery_backend = consul
+cluster_formation.consul.host = 127.0.0.1
+cluster_formation.consul.svc_addr = {{ rabbitmq_listen_address }}
+cluster_formation.consul.svc_addr_auto = false
+cluster_formation.consul.svc_addr_use_nodename = false
+{% endif %}

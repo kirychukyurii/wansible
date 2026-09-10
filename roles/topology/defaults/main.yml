@@ -1,0 +1,47 @@
+---
+# Defaults match what the Webitel package creates (database_helper.sql) and
+# what the rabbitmq role sets up, so things work out of the box.
+#
+# opensips.cfg/database_helper.sql hardcode these same values independently:
+# changing the variables here only affects webitel_* DSN/URL, not opensips.
+webitel_pg_user: opensips
+webitel_pg_password: webitel
+webitel_pg_db: webitel
+
+webitel_amqp_user: webitel
+webitel_amqp_password: webitel
+
+# PKI CA/cert directory on target hosts, shared by consul/nomad/patroni/haproxy.
+pki_remote_dir: /etc/ssl/app
+# Group for reading PKI private keys (node keys, mode 0640). Non-root
+# services sharing a node key (consul->consul, patroni->postgres) join this group.
+pki_cert_group: ssl-cert
+
+# Cluster-wide default; per-service override via
+# webitel_<svc>_pg_sslmode / _pg_connect_timeout / _amqp_heartbeat in group_vars.
+webitel_pg_sslmode: disable
+webitel_pg_connect_timeout: 10
+webitel_amqp_heartbeat: 10
+
+# One firewall block, 10030-10048. nginx consumes 10031/10037/10040
+# (engine WS / storage public / messages bot) as the same facts.
+webitel_engine_grpc_port: 10030
+webitel_engine_websocket_port: 10031
+webitel_call_center_grpc_port: 10032
+webitel_flow_manager_grpc_port: 10033
+webitel_flow_manager_web_port: 10034
+webitel_flow_manager_esl_port: 10035
+webitel_storage_grpc_port: 10036
+webitel_storage_public_port: 10037
+webitel_storage_internal_port: 10038
+webitel_messages_service_port: 10039
+webitel_messages_bot_port: 10040
+webitel_logger_grpc_port: 10041
+webitel_cases_grpc_port: 10042
+webitel_media_exporter_grpc_port: 10043
+# core micro-gRPC (MICRO_SERVICE_ADDRESS) - one per unit, plus messages-bot micro-gRPC.
+webitel_core_api_grpc_port: 10044
+webitel_core_app_grpc_port: 10045
+webitel_core_uac_grpc_port: 10046
+webitel_core_portal_grpc_port: 10047
+webitel_messages_bot_service_port: 10048

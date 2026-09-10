@@ -1,40 +1,102 @@
 ---
+# grafana.ini is package-owned; patched via lineinfile/ini_file instead of a
+# full template to survive package upgrades. See README.
+
 - name: Ensure grafana configuration directories exist
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     owner: root
     group: grafana
-  with_items:
+    mode: "0750"
+  loop:
     - /etc/grafana
-    - /etc/grafana/datasources
     - /etc/grafana/provisioning
     - /etc/grafana/provisioning/datasources
     - /etc/grafana/provisioning/dashboards
     - /etc/grafana/provisioning/notifiers
     - /etc/grafana/provisioning/plugins
 
-- name: Create grafana directories
+- name: Create grafana data directories
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    mode: "0755"
     owner: grafana
     group: grafana
-  with_items:
+    mode: "0755"
+  loop:
     - /var/log/grafana
     - /var/lib/grafana
     - /var/lib/grafana/dashboards
     - /var/lib/grafana/plugins
 
-- name: Change grafana URL
+- name: Set grafana root_url in grafana.ini
   ansible.builtin.lineinfile:
     path: /etc/grafana/grafana.ini
-    regexp: ^;root_url =
-    line: root_url = %(protocol)s://%(domain)s:%(http_port)s/grafana/
+    regexp: '^;?root_url\s*='
+    line: "root_url = %(protocol)s://%(domain)s:%(http_port)s/grafana/"
+  notify: restart grafana
 
-- name: Enable grafana at startup (systemd)
-  ansible.builtin.systemd:
+- name: Configure grafana admin credentials in grafana.ini
+  community.general.ini_file:
+    path: /etc/grafana/grafana.ini
+    section: security
+    option: "{{ item.k }}"
+    value: "{{ item.v }}"
+    no_extra_spaces: true
+    owner: root
+    group: grafana
+    mode: "0640"
+  loop:
+    - { k: admin_user, v: "{{ grafana_admin_user }}" }
+    - { k: admin_password, v: "{{ grafana_admin_password }}" }
+  loop_control:
+    label: "{{ item.k }}"
+  notify: restart grafana
+
+# Datasources connect through local haproxy, not directly to Postgres.
+- name: Deploy datasource provisioning
+  ansible.builtin.template:
+    src: datasources.yml.j2
+    dest: /etc/grafana/provisioning/datasources/pgsql_main.yml
+    owner: root
+    group: grafana
+    mode: "0640"
+  notify: restart grafana
+
+# DB/user are bootstrapped elsewhere (roles/patroni -> bootstrap_db) since pg_hba
+# blocks superuser connections from the grafana host; this only sets [database].
+- name: Configure grafana backend database in grafana.ini
+  community.general.ini_file:
+    path: /etc/grafana/grafana.ini
+    section: database
+    option: "{{ item.k }}"
+    value: "{{ item.v }}"
+    no_extra_spaces: true
+    owner: root
+    group: grafana
+    mode: "0640"
+  loop:
+    - { k: type, v: "{{ grafana_db_type }}" }
+    - { k: host, v: "{{ webitel_pg_host }}:{{ webitel_pg_port }}" }
+    - { k: name, v: "{{ grafana_db_name }}" }
+    - { k: user, v: "{{ grafana_db_user }}" }
+    - { k: password, v: "{{ grafana_db_password }}" }
+    - { k: ssl_mode, v: disable }
+  loop_control:
+    label: "{{ item.k }}"
+  when: grafana_db_type == 'postgres'
+  notify: restart grafana
+
+# Flush now so the restart handler doesn't fire after the enforce task below
+# has already stopped grafana on standby.
+- name: Apply grafana config (restart) before enforcing service state
+  ansible.builtin.meta: flush_handlers
+
+# Static active/passive for now; Nomad takes over failover orchestration later (block 2).
+- name: Enforce grafana service state (active on primary, disabled on standby)
+  ansible.builtin.systemd_service:
     name: grafana-server
-    state: restarted
-    enabled: true
+    enabled: "{{ grafana_active | bool }}"
+    state: "{{ 'started' if grafana_active | bool else 'stopped' }}"
+    daemon_reload: true

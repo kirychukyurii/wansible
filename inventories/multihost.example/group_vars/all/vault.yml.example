@@ -1,0 +1,4 @@
+vault_webitel_cookie_seed: CHANGE_ME_to_a_random_secret
+
+# Grafana admin web-логін (опційно; не задано → дефолт webitel)
+vault_grafana_admin_password: CHANGE_ME_grafana_admin

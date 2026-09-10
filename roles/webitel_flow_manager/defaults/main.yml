@@ -1,0 +1,18 @@
+---
+webitel_flow_manager_package: webitel-flow-manager
+webitel_flow_manager_unit: webitel-flow-manager
+
+# Verify against `dpkg -L webitel-flow-manager | grep /etc/default/` after install.
+webitel_flow_manager_env_file: /etc/default/flow_manager
+
+_webitel_flow_manager_host_addr: "{{ '127.0.0.1' if single_node | default(false) else ansible_facts.default_ipv4.address }}"
+
+webitel_flow_manager_env_defaults:
+  CONSUL: "{{ webitel_consul_address }}:8500"
+  AMQP: "{{ webitel_amqp_url }}?heartbeat=10"
+  DATA_SOURCE: "{{ webitel_pg_dsn_base }}?sslmode=disable&connect_timeout=10"
+  SQL_DATA_SOURCE_REPLICAS: "{{ webitel_pg_dsn_replicas }}?sslmode=disable&connect_timeout=10"
+  GRPC_ADDR: "{{ _webitel_flow_manager_host_addr }}"
+  WEB_ADDR: "{{ _webitel_flow_manager_host_addr }}:5689"
+# Merged over _env_defaults, taking precedence.
+webitel_flow_manager_env_extra: {}

@@ -1,9 +1,0 @@
----
-- name: Install webitel software with APT
-  ansible.builtin.apt:
-    name:
-      - webitel-common
-      - webitel-call-center
-    state: latest
-    update_cache: false
-    install_recommends: false

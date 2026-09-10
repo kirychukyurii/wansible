@@ -1,0 +1,8 @@
+# {{ ansible_managed }}
+server=/consul/127.0.0.1#8600
+{% for r in dns_upstream_servers %}
+server={{ r }}
+{% endfor %}
+no-resolv
+listen-address=127.0.0.1
+bind-interfaces

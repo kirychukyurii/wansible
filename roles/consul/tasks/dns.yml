@@ -1,0 +1,42 @@
+---
+- name: Require upstream DNS (dns_upstream_servers) — dnsmasq runs with no-resolv
+  ansible.builtin.assert:
+    that: dns_upstream_servers | length > 0
+    fail_msg: >-
+      dns_upstream_servers is empty; dnsmasq starts with no-resolv and would
+      only resolve .consul.
+    quiet: true
+
+- name: Install dnsmasq (.consul split DNS)
+  ansible.builtin.apt:
+    name: dnsmasq
+    state: present
+  # no update_cache — webitel's trixie repo has no Release file
+
+- name: Configure dnsmasq (.consul → Consul, rest → upstream)
+  ansible.builtin.template:
+    src: dnsmasq-consul.conf.j2
+    dest: /etc/dnsmasq.d/consul.conf
+    mode: "0644"
+  notify: restart dnsmasq
+
+- name: Ensure dnsmasq enabled and running
+  ansible.builtin.systemd_service:
+    name: dnsmasq
+    enabled: true
+    state: started
+
+- name: Apply dnsmasq config before switching resolv.conf
+  ansible.builtin.meta: flush_handlers
+
+- name: Replace /etc/resolv.conf (symlink or static file)
+  ansible.builtin.file:
+    path: /etc/resolv.conf
+    state: absent
+
+- name: Point /etc/resolv.conf at local dnsmasq
+  ansible.builtin.copy:
+    dest: /etc/resolv.conf
+    mode: "0644"
+    content: |
+      nameserver 127.0.0.1

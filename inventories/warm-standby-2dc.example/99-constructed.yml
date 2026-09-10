@@ -1,0 +1,8 @@
+---
+plugin: ansible.builtin.constructed
+strict: true
+# Groups dc_a / dc_b are declared explicitly in 01-hosts.yml (datacenter is
+# also set there). This file only maps hosts into their service groups.
+keyed_groups:
+  - key: services
+    separator: ""

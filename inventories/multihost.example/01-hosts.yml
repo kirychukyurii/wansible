@@ -1,0 +1,21 @@
+---
+all:
+  hosts:
+    infra1:
+      ansible_host: 1.1.1.1
+      services: [consul_server, postgres, rabbitmq, freeswitch, rtpengine, opensips]
+    app1:
+      ansible_host: 2.2.2.2
+      services:
+        - nginx
+        - grafana
+        - webitel_core
+        - webitel_engine
+        - webitel_call_center
+        - webitel_flow_manager
+        - webitel_storage
+        - webitel_messages
+        - webitel_logger
+        - webitel_cases
+        - webitel_media_exporter
+        - webitel_frontend

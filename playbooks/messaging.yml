@@ -1,0 +1,11 @@
+---
+- name: Resolve cluster topology facts
+  ansible.builtin.import_playbook: topology.yml
+
+- name: RabbitMQ messaging
+  hosts: rabbitmq
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  serial: 1
+  roles: [rabbitmq]

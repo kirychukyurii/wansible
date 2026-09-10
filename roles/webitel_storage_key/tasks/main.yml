@@ -1,0 +1,47 @@
+---
+# Mirrors roles/pki/tasks/ca.yml pattern.
+- name: Ensure local storage-key directory exists (controller)
+  ansible.builtin.file:
+    path: "{{ webitel_storage_key_local_path | dirname }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+# format pkcs1: matches service's own `openssl genrsa` output, not module default PKCS#8.
+- name: Generate storage signing key (controller)
+  community.crypto.openssl_privatekey:
+    path: "{{ webitel_storage_key_local_path }}"
+    type: "{{ webitel_storage_key_type }}"
+    size: "{{ webitel_storage_key_size | int }}"
+    format: pkcs1
+    mode: "0600"
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Resolve webitel units present on this host
+  ansible.builtin.set_fact:
+    _webitel_storage_key_units: >-
+      {{ (['webitel-storage'] if inventory_hostname in (groups['webitel_storage'] | default([])) else [])
+       + (['webitel-engine'] if inventory_hostname in (groups['webitel_engine'] | default([])) else [])
+       + (['webitel-flow-manager'] if inventory_hostname in (groups['webitel_flow_manager'] | default([])) else []) }}
+
+# /opt/storage may not exist on engine/flow_manager nodes (no storage package there).
+- name: Ensure storage key directory exists
+  ansible.builtin.file:
+    path: "{{ webitel_storage_key_remote_path | dirname }}"
+    state: directory
+    owner: "{{ webitel_storage_key_owner }}"
+    group: "{{ webitel_storage_key_group }}"
+    mode: "0755"
+
+- name: Distribute storage signing key
+  ansible.builtin.copy:
+    src: "{{ webitel_storage_key_local_path }}"
+    dest: "{{ webitel_storage_key_remote_path }}"
+    owner: "{{ webitel_storage_key_owner }}"
+    group: "{{ webitel_storage_key_group }}"
+    mode: "{{ webitel_storage_key_mode }}"
+  notify: Restart webitel services using storage key

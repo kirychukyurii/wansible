@@ -1,0 +1,10 @@
+---
+- name: Restart webitel service
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: restarted
+    daemon_reload: true
+  loop: "{{ webitel_service_spec.units | default([webitel_service_spec.package]) }}"
+  # nomad mode: nomad owns the lifecycle, not Ansible.
+  when: not (nomad_managed | default(false))
+  listen: restart webitel service

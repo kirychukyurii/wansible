@@ -1,0 +1,19 @@
+---
+- name: Flush handlers so postgresql is up with final config
+  ansible.builtin.meta: flush_handlers
+
+- name: Bootstrap webitel database (shared, peer auth)
+  ansible.builtin.include_role:
+    name: postgres_common
+    tasks_from: configure
+  vars:
+    postgres_common_db: "{{ postgres_db }}"
+
+- name: Install daily helper cron
+  ansible.builtin.cron:
+    name: psql daily script
+    minute: "4"
+    hour: "4"
+    user: postgres
+    job: "psql {{ postgres_db }} < {{ postgres_helper_sql }}"
+    cron_file: ansible_psql-database_helper

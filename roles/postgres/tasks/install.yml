@@ -1,0 +1,18 @@
+---
+- name: Install standalone-only packages
+  ansible.builtin.apt:
+    name:
+      - timescaledb-tools
+    state: present
+    install_recommends: false
+    update_cache: true
+
+- name: Run timescaledb-tune
+  ansible.builtin.command:
+    cmd: >-
+      timescaledb-tune --quiet --yes
+      --pg-version={{ postgres_major }}
+      --conf-path=/etc/postgresql/{{ postgres_major }}/main/postgresql.conf
+  register: postgres_tune
+  changed_when: postgres_tune.rc == 0
+  notify: restart postgresql

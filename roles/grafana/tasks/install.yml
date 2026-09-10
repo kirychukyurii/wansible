@@ -1,8 +1,33 @@
 ---
-- name: Install grafana packages
+- name: Download Grafana GPG key
+  ansible.builtin.get_url:
+    url: https://apt.grafana.com/gpg.key
+    dest: /tmp/grafana.gpg.asc
+    mode: "0644"
+  register: grafana_gpg_key
+  until: grafana_gpg_key is succeeded
+  retries: 5
+  delay: 2
+
+- name: Dearmor Grafana GPG key
+  ansible.builtin.command:
+    cmd: gpg --batch --yes --dearmor -o {{ grafana_keyring }} /tmp/grafana.gpg.asc
+    creates: "{{ grafana_keyring }}"
+
+- name: Add Grafana APT repository
+  ansible.builtin.deb822_repository:
+    name: grafana
+    types: [deb]
+    uris: "https://apt.grafana.com"
+    suites: stable
+    components: main
+    signed_by: "{{ grafana_keyring }}"
+    state: present
+    enabled: true
+
+- name: Install grafana
   ansible.builtin.apt:
-    name:
-      - grafana
-    state: latest
+    name: grafana
+    state: present
     install_recommends: false
-    update_cache: false
+    update_cache: true

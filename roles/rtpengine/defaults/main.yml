@@ -1,0 +1,8 @@
+---
+rtpengine_mode: global
+rtpengine_sipwise_release: mr13.4.1
+rtpengine_config_url: https://git.webitel.com/projects/WEP/repos/rtpengine/raw/rtpengine.conf
+
+# RTP media port range (must not overlap with freeswitch_rtp_*_port)
+rtpengine_rtp_port_min: 10000
+rtpengine_rtp_port_max: 19999

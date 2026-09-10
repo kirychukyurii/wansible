@@ -1,0 +1,38 @@
+---
+- name: Load service spec
+  ansible.builtin.include_vars:
+    file: "{{ role_path }}/vars/services/{{ webitel_service_name }}.yml"
+  tags: [always]
+
+- name: Install package
+  ansible.builtin.apt:
+    name: "{{ webitel_service_spec.package }}"
+    state: present
+    install_recommends: false
+  tags: [install]
+
+- name: Service-specific tasks
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/services/{{ webitel_service_name }}.yml"
+  when: (role_path ~ '/tasks/services/' ~ webitel_service_name ~ '.yml') is exists
+  tags: [install, configure]
+
+# Files ship with the package (.env*.example -> /etc/default/webitel-*); a
+# service with no env_files (e.g. a future nomad-only one) skips this step.
+- name: Configure env files
+  ansible.builtin.include_tasks: "{{ role_path }}/tasks/configure_env.yml"
+  loop: "{{ webitel_service_spec.env_files | default([]) }}"
+  loop_control:
+    loop_var: webitel_env_block
+    label: "{{ webitel_env_block.path }}"
+  tags: [configure]
+
+# nomad mode: leave disabled and state=omit so nomad's systemd driver, not
+# Ansible, owns start/restart.
+- name: Ensure units enabled and running (or installed-only under nomad)
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: "{{ not (nomad_managed | default(false)) }}"
+    state: "{{ omit if (nomad_managed | default(false)) else 'started' }}"
+    daemon_reload: true
+  loop: "{{ webitel_service_spec.units | default([webitel_service_spec.package]) }}"
+  tags: [configure]

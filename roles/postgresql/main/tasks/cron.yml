@@ -1,9 +1,0 @@
----
-- name: Creates a cron file
-  ansible.builtin.cron:
-    name: psql daily script
-    minute: "4"
-    hour: "4"
-    user: postgres
-    job: psql webitel < /usr/share/postgresql/15/webitel/database_helper.sql
-    cron_file: ansible_psql-database_helper

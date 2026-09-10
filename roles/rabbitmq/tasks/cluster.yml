@@ -1,0 +1,34 @@
+---
+- name: Add /etc/hosts entries for rabbitmq peers
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: "\\s{{ hostvars[item].ansible_hostname }}$"
+    line: "{{ hostvars[item].ansible_default_ipv4.address | default(hostvars[item].ansible_host) }} {{ hostvars[item].ansible_hostname }}"
+    state: present
+  loop: "{{ rabbitmq_cluster_hosts }}"
+
+- name: Pin RabbitMQ Erlang node name to server hostname
+  ansible.builtin.copy:
+    dest: /etc/rabbitmq/rabbitmq-env.conf
+    owner: rabbitmq
+    group: rabbitmq
+    mode: "0644"
+    content: |
+      # Ansible managed - do not edit
+      RABBITMQ_NODENAME=rabbit@{{ ansible_hostname }}
+      RABBITMQ_USE_LONGNAME=false
+  notify: restart rabbitmq
+
+- name: Stop rabbitmq before setting erlang cookie
+  ansible.builtin.systemd_service:
+    name: rabbitmq-server
+    state: stopped
+
+- name: Set shared erlang cookie
+  ansible.builtin.copy:
+    content: "{{ rabbitmq_erlang_cookie }}"
+    dest: /var/lib/rabbitmq/.erlang.cookie
+    owner: rabbitmq
+    group: rabbitmq
+    mode: "0400"
+  notify: restart rabbitmq

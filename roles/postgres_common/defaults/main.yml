@@ -1,0 +1,25 @@
+---
+# pg_major: preflight set_fact (15|18), not defined here.
+
+# webitel_pg_* are topology facts (roles/topology/defaults); no default() here
+# to avoid duplicating that literal.
+postgres_common_db: "{{ webitel_pg_db }}"
+postgres_common_app_user: "{{ webitel_pg_user }}"
+postgres_common_app_password: "{{ webitel_pg_password }}"
+postgres_common_schema_files:
+  - "/usr/share/postgresql/{{ pg_major }}/webitel/webitel-db-schema.sql"
+  - "/usr/share/postgresql/{{ pg_major }}/webitel/webitel-db-data.sql"
+
+postgres_common_base_packages:
+  - "postgresql-{{ pg_major }}"
+  - "timescaledb-2-postgresql-{{ pg_major }}"
+  - "webitel-postgresql-{{ pg_major }}"
+  - "webitel-postgresql-migrations-{{ pg_major }}"
+
+postgres_common_pgdg_keyring: /usr/share/keyrings/postgresql.gpg
+postgres_common_timescale_keyring: /usr/share/keyrings/timescaledb.gpg
+
+# Empty -> peer auth; non-empty (e.g. 127.0.0.1) -> TCP (Patroni leader).
+postgres_common_login_host: ""
+postgres_common_login_user: ""
+postgres_common_login_password: ""

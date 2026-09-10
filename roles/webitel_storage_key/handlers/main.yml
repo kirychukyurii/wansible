@@ -1,0 +1,8 @@
+---
+# Skipped under nomad: it manages task lifecycle and starts the service with the key already in place.
+- name: Restart webitel services using storage key
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    state: restarted
+  loop: "{{ _webitel_storage_key_units }}"
+  when: not (nomad_managed | default(false))

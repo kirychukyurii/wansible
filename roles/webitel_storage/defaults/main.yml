@@ -1,0 +1,18 @@
+---
+webitel_storage_package: webitel-storage
+webitel_storage_unit: webitel-storage
+
+# Verify against `dpkg -L webitel-storage | grep /etc/default/` after install.
+webitel_storage_env_file: /etc/default/storage
+
+_webitel_storage_host_addr: "{{ '127.0.0.1' if single_node | default(false) else ansible_facts.default_ipv4.address }}"
+
+webitel_storage_env_defaults:
+  CONSUL: "{{ webitel_consul_address }}:8500"
+  MESSAGE_BROKER_URL: "{{ webitel_amqp_url }}?heartbeat=10"
+  DATA_SOURCE: "{{ webitel_pg_dsn_base }}?application_name=storage&sslmode=disable&connect_timeout=10"
+  SQL_DATA_SOURCE_REPLICAS: "{{ webitel_pg_dsn_replicas }}?application_name=storage&sslmode=disable&connect_timeout=10"
+  GRPC_ADDR: "{{ _webitel_storage_host_addr }}"
+  PUBLIC_HOST: "{{ webitel_public_url }}"
+# Merged over _env_defaults, taking precedence.
+webitel_storage_env_extra: {}

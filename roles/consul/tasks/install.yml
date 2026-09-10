@@ -1,8 +1,34 @@
 ---
-- name: Install Consul
-  ansible.builtin.package:
-    name: consul
-  register: _install_packages
-  until: _install_packages is succeeded
+- name: Download HashiCorp GPG key
+  ansible.builtin.get_url:
+    url: https://apt.releases.hashicorp.com/gpg
+    dest: /tmp/hashicorp.gpg.asc
+    mode: "0644"
+  register: consul_hashicorp_key
+  until: consul_hashicorp_key is succeeded
   retries: 5
   delay: 2
+
+- name: Dearmor HashiCorp GPG key
+  ansible.builtin.command:
+    cmd: gpg --batch --yes --dearmor -o {{ consul_keyring }} /tmp/hashicorp.gpg.asc
+    creates: "{{ consul_keyring }}"
+
+- name: Add HashiCorp repository
+  ansible.builtin.deb822_repository:
+    name: hashicorp
+    types: [deb]
+    uris: "https://apt.releases.hashicorp.com"
+    suites: "{{ ansible_facts.distribution_release }}"
+    components: main
+    signed_by: "{{ consul_keyring }}"
+    architectures: amd64
+    state: present
+    enabled: true
+
+- name: Install consul
+  ansible.builtin.apt:
+    name: consul
+    state: present
+    install_recommends: false
+    update_cache: true

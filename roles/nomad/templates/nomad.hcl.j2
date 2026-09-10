@@ -1,0 +1,55 @@
+# {{ ansible_managed }}
+log_level  = "INFO"
+data_dir   = "{{ nomad_data_dir }}"
+bind_addr  = "{{ nomad_bind_address }}"
+name       = "{{ ansible_hostname }}"
+datacenter = "{{ nomad_datacenter }}"
+region     = "{{ nomad_region }}"
+
+{% if nomad_is_client | bool %}
+plugin_dir = "{{ nomad_plugin_dir }}"
+{% endif %}
+
+{% if nomad_is_server | bool %}
+server {
+  enabled          = true
+  bootstrap_expect = {{ nomad_server_hosts | length }}
+}
+{% endif %}
+{% if nomad_is_client | bool %}
+client {
+  enabled = true
+  meta {
+{% for k, v in nomad_node_meta.items() %}
+    "{{ k }}" = "{{ v }}"
+{% endfor %}
+  }
+}
+{% if nomad_systemd_driver_install != 'none' %}
+plugin "nomad-driver-systemd" {
+  config {}
+}
+{% endif %}
+{% endif %}
+
+consul {
+  address = "{{ nomad_consul_address }}"
+}
+{% if nomad_tls_enabled | bool %}
+tls {
+  http = true
+  rpc  = true
+  ca_file   = "{{ nomad_ca_file }}"
+  cert_file = "{{ nomad_cert_file }}"
+  key_file  = "{{ nomad_key_file }}"
+  verify_server_hostname = false
+}
+{% endif %}
+
+telemetry {
+  collection_interval        = "15s"
+  disable_hostname           = true
+  prometheus_metrics         = true
+  publish_allocation_metrics = true
+  publish_node_metrics       = true
+}

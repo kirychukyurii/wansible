@@ -1,8 +1,0 @@
----
-- name: Install webitel_messages
-  ansible.builtin.apt:
-    name:
-      - webitel-messages
-    state: latest
-    update_cache: false
-    install_recommends: false

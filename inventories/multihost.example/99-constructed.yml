@@ -1,0 +1,8 @@
+---
+plugin: ansible.builtin.constructed
+strict: true
+keyed_groups:
+  - key: services
+    separator: ""
+  - key: datacenter | default('dc1')
+    prefix: dc

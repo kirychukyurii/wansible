@@ -1,27 +1,22 @@
 ---
-- when: inventory_hostname in groups['grafana']
-  block:
-    - ansible.builtin.include_tasks: install.yml
-      tags:
-        - grafana_install
-      when:
-        - grafana_enable | bool
+- name: Include grafana install tasks
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [grafana_install]
+  tags: [grafana_install]
 
-    - ansible.builtin.include_tasks: configure.yml
-      tags:
-        - grafana_configure
-      when:
-        - grafana_enable | bool
+- name: Include grafana configure tasks
+  ansible.builtin.include_tasks:
+    file: configure.yml
+    apply:
+      tags: [grafana_configure]
+  tags: [grafana_configure]
 
-    - ansible.builtin.include_tasks: datasources.yml
-      tags:
-        - grafana_datasource
-      when:
-        - grafana_enable | bool
-
-    - ansible.builtin.include_tasks: dashboards.yml
-      tags:
-        - grafana_dashboard
-      when:
-        - grafana_enable | bool
-        - grafana_basic_dashboards | bool
+- name: Include grafana dashboards tasks
+  ansible.builtin.include_tasks:
+    file: dashboards.yml
+    apply:
+      tags: [grafana_dashboards]
+  when: grafana_basic_dashboards | bool
+  tags: [grafana_dashboards]

@@ -1,0 +1,59 @@
+---
+- name: Download HashiCorp GPG key
+  ansible.builtin.get_url:
+    url: https://apt.releases.hashicorp.com/gpg
+    dest: /tmp/hashicorp.gpg.asc
+    mode: "0644"
+  register: nomad_hashicorp_key
+  until: nomad_hashicorp_key is succeeded
+  retries: 5
+  delay: 2
+
+- name: Dearmor HashiCorp GPG key
+  ansible.builtin.command:
+    cmd: gpg --batch --yes --dearmor -o {{ nomad_keyring }} /tmp/hashicorp.gpg.asc
+    creates: "{{ nomad_keyring }}"
+
+- name: Add HashiCorp repository
+  ansible.builtin.deb822_repository:
+    name: hashicorp
+    types: [deb]
+    uris: "https://apt.releases.hashicorp.com"
+    suites: "{{ ansible_facts.distribution_release }}"
+    components: main
+    signed_by: "{{ nomad_keyring }}"
+    architectures: amd64
+    state: present
+    enabled: true
+
+- name: Install nomad
+  ansible.builtin.apt:
+    name: nomad
+    state: present
+    install_recommends: false
+    update_cache: true
+
+- name: Install nomad systemd driver (apt)
+  ansible.builtin.apt:
+    name: nomad-driver-systemd
+    state: present
+    install_recommends: false
+  when: nomad_systemd_driver_install == 'apt'
+
+- name: Create plugin directory
+  ansible.builtin.file:
+    path: "{{ nomad_plugin_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: nomad_systemd_driver_install == 'url'
+
+- name: Download nomad systemd driver plugin (url)
+  ansible.builtin.get_url:
+    url: "{{ nomad_systemd_driver_url }}"
+    dest: "{{ nomad_plugin_dir }}/nomad-driver-systemd"
+    mode: "0755"
+  when:
+    - nomad_systemd_driver_install == 'url'
+    - nomad_systemd_driver_url | length > 0

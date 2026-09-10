@@ -1,14 +1,14 @@
 ---
-# Install a collection from Ansible Galaxy.
 collections:
-  - name: ansible.utils
-    source: https://galaxy.ansible.com
-
   - name: ansible.posix
-
+    version: ">=1.5.0,<3.0.0"
+  - name: ansible.utils
+    version: ">=4.0.0,<7.0.0"
   - name: community.general
-
+    version: ">=8.0.0,<12.0.0"
   - name: community.rabbitmq
-
+    version: ">=1.2.0,<2.0.0"
   - name: community.postgresql
-
+    version: ">=3.4.0,<5.0.0"
+  - name: community.crypto
+    version: ">=2.10.0,<4.0.0"

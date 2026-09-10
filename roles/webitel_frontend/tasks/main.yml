@@ -1,0 +1,6 @@
+---
+- name: Install Webitel frontend applications
+  ansible.builtin.apt:
+    name: "{{ webitel_frontend_packages }}"
+    state: present
+    install_recommends: false

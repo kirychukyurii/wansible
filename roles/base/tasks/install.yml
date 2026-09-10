@@ -1,0 +1,7 @@
+---
+- name: Install common packages
+  ansible.builtin.apt:
+    name: "{{ base_packages + ['apt-transport-s3'] }}"
+    state: present
+    update_cache: true
+    install_recommends: false

@@ -1,94 +1,59 @@
 ---
-- name: Read bootstrapped state
-  ansible.builtin.stat:
-    path: /etc/rabbitmq/.bootstrap
-  register: bootstrap_state
-  ignore_errors: true
-  tags: always
+- name: Create systemd drop-in directory
+  ansible.builtin.file:
+    path: /etc/systemd/system/rabbitmq-server.service.d
+    state: directory
+    mode: "0755"
 
-- when: not bootstrap_state.stat.exists
-  block:
-    - name: Create rabbitmq-service directory
-      ansible.builtin.file:
-        dest: /etc/systemd/system/rabbitmq-server.service.d
-        state: directory
+- name: Raise file descriptor limit
+  ansible.builtin.copy:
+    content: |
+      [Service]
+      LimitNOFILE=64000
+    dest: /etc/systemd/system/rabbitmq-server.service.d/limits.conf
+    mode: "0644"
+  notify: restart rabbitmq
 
-    - name: Add rabbitmq limits
-      ansible.builtin.copy:
-        content: |
-          [Service]
-          LimitNOFILE=64000
-        dest: /etc/systemd/system/rabbitmq-server.service.d/limits.conf
-        force: true
+- name: Enable RabbitMQ plugins
+  community.rabbitmq.rabbitmq_plugin:
+    names: rabbitmq_consistent_hash_exchange,rabbitmq_management,rabbitmq_peer_discovery_consul
+    state: enabled
+    broker_state: offline
+  notify: restart rabbitmq
 
-    - name: Download "rabbitmq plugins"
-      ansible.builtin.get_url:
-        url: https://git.webitel.com/projects/WEP/repos/rabbitmq/raw/enabled_plugins
-        dest: /etc/rabbitmq/enabled_plugins
+- name: Render rabbitmq.conf
+  ansible.builtin.template:
+    src: rabbitmq.conf.j2
+    dest: /etc/rabbitmq/rabbitmq.conf
+    mode: "0644"
+  notify: restart rabbitmq
 
-    - name: Download "rabbitmq config"
-      ansible.builtin.get_url:
-        url: https://git.webitel.com/projects/WEP/repos/rabbitmq/raw/rabbitmq.conf
-        dest: /etc/rabbitmq/rabbitmq.conf
+- name: Enable and start rabbitmq-server
+  ansible.builtin.systemd_service:
+    name: rabbitmq-server
+    enabled: true
+    state: started
+    daemon_reload: true
 
-    - name: Change RabbitMQ disk free limit
-      ansible.builtin.lineinfile:
-        path: /etc/rabbitmq/rabbitmq.conf
-        state: present
-        regexp: ^disk_free_limit.absolute
-        line: disk_free_limit.absolute = 2GB
+- name: Flush handlers before user management
+  ansible.builtin.meta: flush_handlers
 
-    - when: groups['all'] | length > 1
-      block:
-        - name: Change Consul IP
-          ansible.builtin.lineinfile:
-            path: /etc/rabbitmq/rabbitmq.conf
-            state: present
-            regexp: ^cluster_formation.consul.host
-            line: cluster_formation.consul.host = {{ hostvars[groups['consul'][0]]['ansible_default_ipv4']['address'] }}
+# Mnesia replicates users/permissions cluster-wide, so run only on the first node.
+- name: Create webitel user (once per DC)
+  community.rabbitmq.rabbitmq_user:
+    user: "{{ rabbitmq_user }}"
+    password: "{{ rabbitmq_password }}"
+    tags: administrator
+    permissions:
+      - vhost: /
+        configure_priv: .*
+        read_priv: .*
+        write_priv: .*
+    state: present
+  when: inventory_hostname == (rabbitmq_cluster_hosts | first)
 
-        - name: Change RabbitMQ listen IP
-          ansible.builtin.lineinfile:
-            path: /etc/rabbitmq/rabbitmq.conf
-            state: present
-            regexp: ^listeners.tcp.1
-            line: listeners.tcp.1 = {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}:5672
-
-        - name: Change RabbitMQ management IP
-          ansible.builtin.lineinfile:
-            path: /etc/rabbitmq/rabbitmq.conf
-            state: present
-            regexp: ^management.tcp.ip
-            line: management.tcp.ip = {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
-
-    - name: Enable rabbitmq at startup (systemd)
-      ansible.builtin.systemd:
-        name: rabbitmq-server
-        enabled: true
-        state: restarted
-        daemon_reload: true
-      when:
-        - ansible_service_mgr == "systemd"
-
-    - name: Add webitel user
-      community.rabbitmq.rabbitmq_user:
-        user: webitel
-        password: webitel
-        tags: administrator
-        permissions:
-          - vhost: /
-            configure_priv: .*
-            read_priv: .*
-            write_priv: .*
-        state: present
-
-    - name: Delete guest user
-      community.rabbitmq.rabbitmq_user:
-        user: webguest
-        state: absent
-
-    - name: Create bootstrapped state file
-      ansible.builtin.file:
-        dest: /etc/rabbitmq/.bootstrap
-        state: touch
-      notify: restart rabbitmq-server
+- name: Remove guest user (once per DC)
+  community.rabbitmq.rabbitmq_user:
+    user: guest
+    state: absent
+  when: inventory_hostname == (rabbitmq_cluster_hosts | first)

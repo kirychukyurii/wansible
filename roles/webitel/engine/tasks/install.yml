@@ -1,8 +1,0 @@
----
-- name: Install webitel_engine
-  ansible.builtin.apt:
-    name:
-      - webitel-engine
-    state: latest
-    update_cache: false
-    install_recommends: false

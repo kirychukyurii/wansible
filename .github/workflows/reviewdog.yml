@@ -24,3 +24,37 @@ jobs:
           reporter: github-check
           level: warning
           ansiblelint_flags: "./*"
+
+  validate:
+    name: runner / yamllint + syntax-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tooling
+        run: pip install ansible-lint yamllint ansible-core
+
+      - name: Install collections
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: yamllint
+        run: yamllint .
+
+      - name: ansible-lint
+        run: ansible-lint
+
+      - name: Syntax check (singlehost)
+        run: ansible-playbook --syntax-check -i inventories/singlehost.example site.yml
+
+      - name: Syntax check (multihost)
+        run: ansible-playbook --syntax-check -i inventories/multihost.example site.yml
+
+      - name: Syntax check (failover)
+        run: ansible-playbook --syntax-check -i inventories/failover.example site.yml
+
+      - name: Syntax check (warm-standby-2dc)
+        run: ansible-playbook --syntax-check -i inventories/warm-standby-2dc.example site.yml

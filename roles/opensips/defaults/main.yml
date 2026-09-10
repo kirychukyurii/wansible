@@ -1,0 +1,18 @@
+---
+opensips_version: "3.4"
+opensips_fail2ban: false
+opensips_keyring: /usr/share/keyrings/opensips.gpg
+opensips_config_url: https://git.webitel.com/projects/WEP/repos/opensips/raw/opensips.cfg
+opensips_packages:
+  - opensips
+  - opensips-http-modules
+  - opensips-postgres-module
+  - opensips-presence-modules
+  - opensips-rabbitmq-modules
+  - opensips-auth-modules
+  - opensips-wss-module
+  - opensips-tls-module
+  - opensips-tlsmgm-module
+  - opensips-tls-wolfssl-module
+  - opensips-xmlrpc-module
+  - opensips-json-module

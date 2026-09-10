@@ -1,0 +1,25 @@
+---
+webitel_known_services:
+  - consul_server
+  - consul_agent
+  - nomad_server
+  - nomad_client
+  - patroni
+  - postgres
+  - rabbitmq
+  - freeswitch
+  - rtpengine
+  - opensips
+  - nginx
+  - grafana
+  - haproxy
+  - webitel_core
+  - webitel_engine
+  - webitel_call_center
+  - webitel_flow_manager
+  - webitel_storage
+  - webitel_messages
+  - webitel_logger
+  - webitel_cases
+  - webitel_media_exporter
+  - webitel_frontend

@@ -1,0 +1,15 @@
+---
+# One key distributed byte-identical to all consumer nodes in both DCs, so
+# signed media URLs stay valid in the standby DC after failover.
+
+# git-ignored (inventories/*/storage/), same pattern as pki_local_dir.
+webitel_storage_key_local_path: "{{ inventory_dir }}/storage/key.pem"
+
+webitel_storage_key_remote_path: /opt/storage/key.pem
+
+webitel_storage_key_owner: webitel
+webitel_storage_key_group: webitel
+webitel_storage_key_mode: "0600"
+
+webitel_storage_key_type: RSA
+webitel_storage_key_size: 2048

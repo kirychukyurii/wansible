@@ -1,0 +1,63 @@
+---
+# v26.04: webitel-api = HTTP API gateway + auth, webitel-app = provisioning/APR,
+# webitel-uac = SIP UAC <-> OpenSIPS, webitel-portal = public portal.
+# Shared infra keys (registry/broker/dbo/log) are repeated in each file.
+webitel_sip_address: >- # noqa: var-naming[no-role-prefix]
+  {{ hostvars[groups['opensips'][0]].ansible_default_ipv4.address
+     if groups['opensips'] | default([]) | length > 0
+     else ansible_facts.default_ipv4.address }}
+# Must be identical across all webitel-api hosts (signs/validates auth tokens;
+# a token from one api must validate on another), hence derived from the
+# cluster-wide webitel_cookie_seed rather than randomized per host.
+webitel_cookie_keys: >- # noqa: var-naming[no-role-prefix]
+  {{ lookup('ansible.builtin.password', '/dev/null length=32 chars=ascii_letters,digits seed=' + webitel_cookie_seed) }},{{
+     lookup('ansible.builtin.password', '/dev/null length=32 chars=ascii_letters,digits seed=' + webitel_cookie_seed + '2') }}
+
+# Host IP, not 127.0.0.1: consul registration must be reachable cross-host in
+# multihost setups. MICRO_API_ADDRESS is commented out in .env.api.example
+# upstream, so it must be set explicitly or the unit falls back to its
+# built-in default instead of hostIP:8080 (needed by nginx-consul).
+webitel_core_bind_host: "{{ '127.0.0.1' if single_node | default(false) else ansible_facts.default_ipv4.address }}" # noqa: var-naming[no-role-prefix]
+webitel_service_spec:
+  package: webitel-core
+  # portal needs an extra DB schema we don't provision, so it's excluded here;
+  # its env is still configured below. The package's postinst enables it anyway,
+  # so run `systemctl disable --now webitel-portal` on the host to stop the crash loop.
+  units: [webitel-api, webitel-app, webitel-uac]
+  env_files:
+    - path: /etc/default/webitel-api
+      env:
+        MICRO_REGISTRY_ADDRESS: "{{ webitel_consul_address }}:8500"
+        MICRO_BROKER_ADDRESS: "{{ webitel_amqp_url }}/"
+        WEBITEL_DBO_ADDRESS: "{{ webitel_pg_dsn_base }}?sslmode={{ webitel_core_pg_sslmode | default(webitel_pg_sslmode) }}"
+        MICRO_SERVICE_ADDRESS: "{{ webitel_core_bind_host }}:{{ webitel_core_api_grpc_port }}"
+        MICRO_API_ADDRESS: "{{ webitel_core_bind_host }}:8080"
+        MICRO_LOG_LEVEL: "{{ webitel_core_log_level | default(webitel_log_level | default('trace')) }}"
+        WBTL_AUTH_URL: "{{ webitel_public_url }}/api"
+        WBTL_LOGIN_URL: "{{ webitel_public_url }}/auth"
+        WBTL_LOGOUT_URL: "{{ webitel_public_url }}/auth"
+        WBTL_COOKIE_KEYS: "{{ webitel_cookie_keys }}"
+    - path: /etc/default/webitel-app
+      env:
+        MICRO_REGISTRY_ADDRESS: "{{ webitel_consul_address }}:8500"
+        MICRO_BROKER_ADDRESS: "{{ webitel_amqp_url }}/"
+        WEBITEL_DBO_ADDRESS: "{{ webitel_pg_dsn_base }}?sslmode={{ webitel_core_pg_sslmode | default(webitel_pg_sslmode) }}"
+        MICRO_SERVICE_ADDRESS: "{{ webitel_core_bind_host }}:{{ webitel_core_app_grpc_port }}"
+        MICRO_LOG_LEVEL: "{{ webitel_core_log_level | default(webitel_log_level | default('trace')) }}"
+    - path: /etc/default/webitel-uac
+      env:
+        MICRO_REGISTRY_ADDRESS: "{{ webitel_consul_address }}:8500"
+        MICRO_BROKER_ADDRESS: "{{ webitel_amqp_url }}/"
+        WEBITEL_DBO_ADDRESS: "{{ webitel_pg_dsn_base }}?sslmode={{ webitel_core_pg_sslmode | default(webitel_pg_sslmode) }}"
+        MICRO_SERVICE_ADDRESS: "{{ webitel_core_bind_host }}:{{ webitel_core_uac_grpc_port }}"
+        MICRO_LOG_LEVEL: "{{ webitel_core_log_level | default(webitel_log_level | default('trace')) }}"
+        OPENSIPS_MI_ADDRESS: "http://{{ webitel_opensips_host }}:8000/mi"
+        OPENSIPS_SIP_ADDRESS: "{{ webitel_sip_address }}"
+    - path: /etc/default/webitel-portal
+      env:
+        MICRO_REGISTRY_ADDRESS: "{{ webitel_consul_address }}:8500"
+        MICRO_BROKER_ADDRESS: "{{ webitel_amqp_url }}/"
+        WEBITEL_DBO_ADDRESS: "{{ webitel_pg_dsn_base }}?sslmode={{ webitel_core_pg_sslmode | default(webitel_pg_sslmode) }}"
+        MICRO_SERVICE_ADDRESS: "{{ webitel_core_bind_host }}:{{ webitel_core_portal_grpc_port }}"
+        MICRO_LOG_LEVEL: "{{ webitel_core_log_level | default(webitel_log_level | default('trace')) }}"
+        WEBITEL_PUBLIC_URL: "{{ webitel_public_url }}/portal"

@@ -1,0 +1,9 @@
+---
+pki_local_dir: "{{ inventory_dir }}/pki"
+# pki_remote_dir comes from roles/topology/defaults, not here.
+pki_ca_cn: "Webitel root CA"
+pki_ca_o: "Webitel"
+# ECC not Ed25519: Nomad only accepts RSA/ECDSA for TLS certs.
+pki_key_type: ECC
+pki_ecc_curve: secp384r1
+pki_cert_validity_days: 3650

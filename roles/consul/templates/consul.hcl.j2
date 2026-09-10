@@ -1,0 +1,64 @@
+# {{ ansible_managed }}
+datacenter = "{{ consul_datacenter }}"
+data_dir   = "{{ consul_data_dir }}"
+log_level  = "{{ consul_log_level }}"
+node_name  = "{{ ansible_hostname }}"
+
+bind_addr      = "{{ consul_bind_address }}"
+advertise_addr = "{{ consul_bind_address }}"
+client_addr    = "{{ consul_client_address }}"
+
+{% if consul_role == 'server' %}
+server           = true
+bootstrap_expect = {{ consul_server_hosts | length }}
+{% else %}
+server = false
+{% endif %}
+
+ui_config {
+  enabled = {{ 'true' if (consul_ui | bool and consul_role == 'server') else 'false' }}
+}
+
+{% if consul_server_hosts | length > 0 %}
+retry_join = [{% for h in consul_server_hosts if h != inventory_hostname %}"{{ hostvars[h].ansible_default_ipv4.address }}"{{ ", " if not loop.last }}{% endfor %}]
+{% endif %}
+
+{% if consul_tls_enabled | bool %}
+tls {
+  internal_rpc {
+    verify_incoming        = true
+    verify_outgoing        = true
+    verify_server_hostname = false
+
+    ca_file   = "{{ consul_ca_file }}"
+    cert_file = "{{ consul_cert_file }}"
+    key_file  = "{{ consul_key_file }}"
+  }
+
+  grpc {
+    verify_incoming = true
+
+    ca_file   = "{{ consul_ca_file }}"
+    cert_file = "{{ consul_cert_file }}"
+    key_file  = "{{ consul_key_file }}"
+  }
+}
+{% endif %}
+
+{% if consul_encrypt_key | length > 0 %}
+encrypt = "{{ consul_encrypt_key }}"
+encrypt_verify_incoming = true
+encrypt_verify_outgoing = true
+{% endif %}
+
+telemetry {
+  prometheus_retention_time = "{{ consul_telemetry_retention }}"
+}
+
+ports {
+  dns = 8600
+}
+
+disable_update_check = true
+disable_remote_exec  = true
+enable_syslog        = true

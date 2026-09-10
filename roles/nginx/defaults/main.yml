@@ -1,0 +1,39 @@
+---
+nginx_config_url: https://git.webitel.com/projects/WEP/repos/nginx/raw/nginx.conf
+nginx_site_url: https://git.webitel.com/projects/WEP/repos/nginx/raw/default
+# Multi-host defaults point at nginx variable names (defined by the blockinfile
+# map in sites-enabled/default), resolved via Consul DNS at runtime.
+nginx_upstream_storage: >-
+  {{ '127.0.0.1' if single_node else '$storage_backend' }}
+nginx_upstream_api: >-
+  {{ '127.0.0.1' if single_node else '$webitel_api_backend' }}
+nginx_upstream_messages: >-
+  {{ '127.0.0.1' if single_node else '$messages_bot_backend' }}
+nginx_upstream_engine_ws: >-
+  {{ '127.0.0.1' if single_node else '$engine_backend' }}
+nginx_upstream_opensips: >-
+  {{ '127.0.0.1' if single_node else '$opensips_backend' }}
+nginx_upstream_grafana: >-
+  {{ '127.0.0.1' if single_node
+     else (hostvars[groups['grafana'][0]].ansible_default_ipv4.address
+           if groups['grafana'] | default([]) | length > 0
+           else '127.0.0.1') }}
+
+# Mutually exclusive modes: letsencrypt (certbot role), provided (operator cert),
+# self_signed (generated here). See README for details.
+nginx_tls_mode: self_signed
+
+nginx_tls_dir: /etc/nginx/ssl
+nginx_tls_cert_path: "{{ nginx_tls_dir }}/{{ nginx_site_name }}.crt"
+nginx_tls_key_path: "{{ nginx_tls_dir }}/{{ nginx_site_name }}.key"
+
+# provided: controller-side paths; required when nginx_tls_mode is provided.
+nginx_tls_cert: ""
+nginx_tls_key: ""
+# provided (optional): controller-side intermediate CA paths, closest to leaf first.
+# Empty means nginx_tls_cert must already be the full chain.
+nginx_tls_chain: []
+
+nginx_tls_self_signed_key_type: RSA
+nginx_tls_self_signed_key_size: 2048
+nginx_tls_self_signed_days: 825

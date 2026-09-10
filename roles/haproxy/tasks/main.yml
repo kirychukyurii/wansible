@@ -1,0 +1,14 @@
+---
+- name: Install HAProxy
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [haproxy_install]
+  tags: [haproxy_install]
+
+- name: Configure HAProxy
+  ansible.builtin.include_tasks:
+    file: configure.yml
+    apply:
+      tags: [haproxy_configure]
+  tags: [haproxy_configure]

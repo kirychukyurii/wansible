@@ -1,0 +1,89 @@
+---
+- name: Wait for Patroni leader REST endpoint
+  ansible.builtin.uri:
+    url: "{{ 'https' if patroni_tls_enabled | bool else 'http' }}://{{ patroni_node_ip }}:8008/leader"
+    validate_certs: false
+    status_code: [200, 503]
+  register: patroni_leader_check
+  until: patroni_leader_check.status == 200
+  retries: 30
+  delay: 5
+  changed_when: false
+  failed_when: false
+
+- name: Bootstrap webitel database on the leader only (shared, TCP auth)
+  when: patroni_leader_check.status == 200
+  ansible.builtin.include_role:
+    name: postgres_common
+    tasks_from: configure
+  vars:
+    postgres_common_app_user: "{{ patroni_app_user }}"
+    postgres_common_login_host: "127.0.0.1"
+    postgres_common_login_user: "{{ patroni_superuser_user }}"
+    postgres_common_login_password: "{{ patroni_superuser_password }}"
+
+# Created here, not in the grafana role: pg_hba only allows the superuser from
+# 127.0.0.1/cluster hosts, not from the grafana host.
+- name: Bootstrap grafana database on the leader only
+  when:
+    - patroni_leader_check.status == 200
+    - (groups['grafana'] | default([])) | length > 0
+    - grafana_db_type | default('postgres') == 'postgres'
+  become_user: postgres
+  block:
+    - name: Create grafana DB user
+      community.postgresql.postgresql_user:
+        name: "{{ grafana_db_user }}"
+        password: "{{ grafana_db_password }}"
+        login_db: postgres
+        login_host: "127.0.0.1"
+        login_user: "{{ patroni_superuser_user }}"
+        login_password: "{{ patroni_superuser_password }}"
+
+    - name: Create grafana database
+      community.postgresql.postgresql_db:
+        name: "{{ grafana_db_name }}"
+        owner: "{{ grafana_db_user }}"
+        login_host: "127.0.0.1"
+        login_user: "{{ patroni_superuser_user }}"
+        login_password: "{{ patroni_superuser_password }}"
+
+# ALTER DEFAULT PRIVILEGES keeps future webitel migration tables readable too.
+- name: Provision grafana datasource (read-only) user on the leader only
+  when:
+    - patroni_leader_check.status == 200
+    - (groups['grafana'] | default([])) | length > 0
+  become_user: postgres
+  block:
+    - name: Create grafana datasource user (no privileges yet)
+      community.postgresql.postgresql_user:
+        name: "{{ grafana_datasource_user }}"
+        password: "{{ grafana_datasource_password }}"
+        role_attr_flags: NOSUPERUSER,NOCREATEDB,NOCREATEROLE
+        login_db: postgres
+        login_host: "127.0.0.1"
+        login_user: "{{ patroni_superuser_user }}"
+        login_password: "{{ patroni_superuser_password }}"
+
+    - name: Grant SELECT-only across all webitel schemas
+      community.postgresql.postgresql_query:
+        db: "{{ webitel_pg_db }}"
+        login_host: "127.0.0.1"
+        login_user: "{{ patroni_superuser_user }}"
+        login_password: "{{ patroni_superuser_password }}"
+        query: |
+          DO $do$
+          DECLARE s text;
+          BEGIN
+            FOR s IN
+              SELECT nspname FROM pg_namespace
+              WHERE nspname !~ '^pg_' AND nspname <> 'information_schema'
+            LOOP
+              EXECUTE format('GRANT USAGE ON SCHEMA %I TO %I', s, '{{ grafana_datasource_user }}');
+              EXECUTE format('GRANT SELECT ON ALL TABLES IN SCHEMA %I TO %I', s, '{{ grafana_datasource_user }}');
+              EXECUTE format('ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA %I GRANT SELECT ON TABLES TO %I',
+                             '{{ patroni_app_user }}', s, '{{ grafana_datasource_user }}');
+            END LOOP;
+          END
+          $do$;
+      changed_when: false

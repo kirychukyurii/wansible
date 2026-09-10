@@ -1,0 +1,227 @@
+---
+# Derives cluster variables from inventory topology into facts, so they have
+# a single source of truth instead of being hand-duplicated in group_vars.
+#
+# external_* overrides must be referenced inside each expression, not
+# assigned to the same name: set_fact (precedence 18) would otherwise beat
+# a group_vars override and silently discard it.
+
+- name: Resolve topology flags
+  ansible.builtin.set_fact:
+    single_node: "{{ (groups['all'] | default([])) | length == 1 }}"
+    ha_mode: "{{ (groups['patroni'] | default([])) | length > 0 }}"
+    webitel_pg_haproxy: "{{ (groups['haproxy'] | default([])) | length > 0 }}"
+    webitel_amqp_haproxy: "{{ (groups['haproxy'] | default([]) | length > 0) and (groups['rabbitmq'] | default([]) | length > 0) }}"
+    # true means nomad owns the systemd unit lifecycle; Ansible still
+    # installs the package and writes env but won't enable/start it.
+    nomad_managed: "{{ (groups['nomad_client'] | default([])) | length > 0 }}"
+    webitel_release_component: "{{ webitel_version }}-releases"
+    patroni_is_standby_dc: >-
+      {{ (primary_datacenter is defined) and (datacenter != primary_datacenter) }}
+    # Resolved here, not only in preflight, so standalone playbooks
+    # (database.yml) work on their own.
+    pg_major: "{{ pg_major | default('15' if ansible_facts.distribution_major_version == '12' else '18') }}"
+
+- name: Resolve consul PKI flag
+  ansible.builtin.set_fact:
+    consul_pki_enabled: >-
+      {{ consul_pki_enabled if consul_pki_enabled is defined else ha_mode }}
+
+- name: Freeze global credentials and shared paths
+  ansible.builtin.set_fact:
+    webitel_pg_user: "{{ webitel_pg_user }}"
+    webitel_pg_password: "{{ webitel_pg_password }}"
+    webitel_pg_db: "{{ webitel_pg_db }}"
+    webitel_amqp_user: "{{ webitel_amqp_user }}"
+    webitel_amqp_password: "{{ webitel_amqp_password }}"
+    pki_remote_dir: "{{ pki_remote_dir }}"
+    pki_cert_group: "{{ pki_cert_group }}"
+
+# Consumed by the webitel_service and nginx roles.
+- name: Freeze webitel service tunable defaults
+  ansible.builtin.set_fact:
+    webitel_pg_sslmode: "{{ webitel_pg_sslmode }}"
+    webitel_pg_connect_timeout: "{{ webitel_pg_connect_timeout }}"
+    webitel_amqp_heartbeat: "{{ webitel_amqp_heartbeat }}"
+    webitel_engine_grpc_port: "{{ webitel_engine_grpc_port }}"
+    webitel_engine_websocket_port: "{{ webitel_engine_websocket_port }}"
+    webitel_call_center_grpc_port: "{{ webitel_call_center_grpc_port }}"
+    webitel_flow_manager_grpc_port: "{{ webitel_flow_manager_grpc_port }}"
+    webitel_flow_manager_web_port: "{{ webitel_flow_manager_web_port }}"
+    webitel_flow_manager_esl_port: "{{ webitel_flow_manager_esl_port }}"
+    webitel_storage_grpc_port: "{{ webitel_storage_grpc_port }}"
+    webitel_storage_public_port: "{{ webitel_storage_public_port }}"
+    webitel_storage_internal_port: "{{ webitel_storage_internal_port }}"
+    webitel_messages_service_port: "{{ webitel_messages_service_port }}"
+    webitel_messages_bot_port: "{{ webitel_messages_bot_port }}"
+    webitel_logger_grpc_port: "{{ webitel_logger_grpc_port }}"
+    webitel_cases_grpc_port: "{{ webitel_cases_grpc_port }}"
+    webitel_media_exporter_grpc_port: "{{ webitel_media_exporter_grpc_port }}"
+    webitel_core_api_grpc_port: "{{ webitel_core_api_grpc_port }}"
+    webitel_core_app_grpc_port: "{{ webitel_core_app_grpc_port }}"
+    webitel_core_uac_grpc_port: "{{ webitel_core_uac_grpc_port }}"
+    webitel_core_portal_grpc_port: "{{ webitel_core_portal_grpc_port }}"
+    webitel_messages_bot_service_port: "{{ webitel_messages_bot_service_port }}"
+
+# In single-DC inventories every host shares one datacenter, so filtering
+# still returns the full group; consumers rely on this to stay topology-agnostic.
+- name: Resolve per-datacenter host lists
+  ansible.builtin.set_fact:
+    _topology_haproxy_dc_hosts: >-
+      {{ groups['haproxy'] | default([]) | map('extract', hostvars)
+         | selectattr('datacenter', 'defined')
+         | selectattr('datacenter', '==', datacenter)
+         | map(attribute='inventory_hostname') | list }}
+    _topology_opensips_dc_hosts: >-
+      {{ groups['opensips'] | default([]) | map('extract', hostvars)
+         | selectattr('datacenter', 'defined')
+         | selectattr('datacenter', '==', datacenter)
+         | map(attribute='inventory_hostname') | list }}
+    _topology_patroni_primary_hosts: >-
+      {{ groups['patroni'] | default([]) | map('extract', hostvars)
+         | selectattr('datacenter', 'defined')
+         | selectattr('datacenter', '==', primary_datacenter | default(datacenter))
+         | map(attribute='inventory_hostname') | list }}
+    _topology_haproxy_primary_dc_hosts: >-
+      {{ groups['haproxy'] | default([]) | map('extract', hostvars)
+         | selectattr('datacenter', 'defined')
+         | selectattr('datacenter', '==', primary_datacenter | default(datacenter))
+         | map(attribute='inventory_hostname') | list }}
+    _topology_flow_manager_dc_hosts: >-
+      {{ groups['webitel_flow_manager'] | default([]) | map('extract', hostvars)
+         | selectattr('datacenter', 'defined')
+         | selectattr('datacenter', '==', datacenter)
+         | map(attribute='inventory_hostname') | list }}
+    _topology_storage_dc_hosts: >-
+      {{ groups['webitel_storage'] | default([]) | map('extract', hostvars)
+         | selectattr('datacenter', 'defined')
+         | selectattr('datacenter', '==', datacenter)
+         | map(attribute='inventory_hostname') | list }}
+
+- name: Assert dependency sources are resolvable
+  ansible.builtin.assert:
+    that:
+      - external_pg_host is defined or external_pg_dsn is defined or single_node
+        or ha_mode or webitel_pg_haproxy or (groups['postgres'] | default([]) | length > 0)
+      - external_amqp_host is defined or external_amqp_url is defined or single_node
+        or ha_mode or (groups['rabbitmq'] | default([]) | length > 0)
+      - external_opensips_host is defined or single_node
+        or (groups['opensips'] | default([]) | length > 0)
+      - not (patroni_is_standby_dc | bool) or (_topology_patroni_primary_hosts | length > 0)
+    fail_msg: >-
+      Could not resolve a dependency host from the topology. Add a host to
+      the relevant group (postgres/rabbitmq/opensips/haproxy/patroni) or set
+      an external_* override in group_vars.
+
+- name: Resolve dependency hosts and ports
+  ansible.builtin.set_fact:
+    webitel_consul_address: >-
+      {{ external_consul_host if external_consul_host is defined
+         else ('127.0.0.1' if (ha_mode or single_node)
+               else hostvars[groups['consul_server'][0]].ansible_default_ipv4.address) }}
+    webitel_pg_host: >-
+      {{ external_pg_host if external_pg_host is defined
+         else ('127.0.0.1' if inventory_hostname in (groups['haproxy'] | default([]))
+               else (hostvars[(_topology_haproxy_dc_hosts or groups['haproxy'])[0]].ansible_default_ipv4.address
+                     if webitel_pg_haproxy
+                     else (('primary.' + webitel_patroni_scope + '.service.consul') if ha_mode
+                           else ('127.0.0.1' if single_node
+                                 else hostvars[groups['postgres'][0]].ansible_default_ipv4.address)))) }}
+    webitel_pg_port: >-
+      {{ external_pg_port if external_pg_port is defined
+         else (haproxy_pg_rw_port if webitel_pg_haproxy else 5432) }}
+    webitel_amqp_host: >-
+      {{ external_amqp_host if external_amqp_host is defined
+         else ('127.0.0.1' if (webitel_amqp_haproxy and inventory_hostname in (groups['haproxy'] | default([])))
+               else (hostvars[(_topology_haproxy_dc_hosts or groups['haproxy'])[0]].ansible_default_ipv4.address
+                     if webitel_amqp_haproxy
+                     else ('rabbitmq.service.consul' if ha_mode
+                           else ('127.0.0.1' if single_node
+                                 else hostvars[groups['rabbitmq'][0]].ansible_default_ipv4.address)))) }}
+    webitel_amqp_port: >-
+      {{ external_amqp_port if external_amqp_port is defined
+         else (haproxy_amqp_port if webitel_amqp_haproxy else 5672) }}
+    webitel_opensips_host: >-
+      {{ external_opensips_host if external_opensips_host is defined
+         else ('127.0.0.1' if single_node
+               else hostvars[(_topology_opensips_dc_hosts or groups['opensips'])[0]].ansible_default_ipv4.address) }}
+    # Consumed by FreeSWITCH (acr_srv -> flow_manager ESL, cdr_url -> storage).
+    webitel_flow_manager_host: >-
+      {{ external_flow_manager_host if external_flow_manager_host is defined
+         else ('127.0.0.1' if single_node
+               else hostvars[(_topology_flow_manager_dc_hosts or groups['webitel_flow_manager'])[0]].ansible_default_ipv4.address) }}
+    webitel_storage_host: >-
+      {{ external_storage_host if external_storage_host is defined
+         else ('127.0.0.1' if single_node
+               else hostvars[(_topology_storage_dc_hosts or groups['webitel_storage'])[0]].ansible_default_ipv4.address) }}
+
+# Separate from webitel_pg_host (DC-local, read-capable in standby DC):
+# writes must reach the primary DC since the standby DC is read-only.
+- name: Resolve cluster-global RW endpoint (active primary)
+  ansible.builtin.set_fact:
+    webitel_pg_primary_host: >-
+      {{ external_pg_host if external_pg_host is defined
+         else (hostvars[_topology_haproxy_primary_dc_hosts[0]].ansible_default_ipv4.address
+               if ((patroni_is_standby_dc | bool) and (_topology_haproxy_primary_dc_hosts | length > 0))
+               else webitel_pg_host) }}
+    webitel_pg_primary_port: >-
+      {{ external_pg_port if external_pg_port is defined
+         else (haproxy_pg_rw_port
+               if ((patroni_is_standby_dc | bool) and (_topology_haproxy_primary_dc_hosts | length > 0))
+               else webitel_pg_port) }}
+
+- name: Build connection strings
+  ansible.builtin.set_fact:
+    webitel_amqp_url: >-
+      {{ external_amqp_url if external_amqp_url is defined
+         else 'amqp://' + webitel_amqp_user + ':' + webitel_amqp_password
+              + '@' + webitel_amqp_host + ':' + (webitel_amqp_port | string) }}
+    webitel_pg_dsn_base: >-
+      {{ external_pg_dsn if external_pg_dsn is defined
+         else 'postgres://' + webitel_pg_user + ':' + webitel_pg_password
+              + '@' + webitel_pg_host + ':' + (webitel_pg_port | string)
+              + '/' + webitel_pg_db }}
+    webitel_public_url_default: >-
+      {{ ('https://' + nginx_site_name) if nginx_tls_mode | default('self_signed') in ['letsencrypt', 'provided']
+         else 'http://' + (hostvars[groups['nginx'][0]].ansible_default_ipv4.address
+                           if (groups['nginx'] | default([])) | length > 0
+                           else 'localhost') }}
+
+- name: Build derived connection strings and public URL
+  ansible.builtin.set_fact:
+    webitel_pg_dsn_replicas: >-
+      {{ external_pg_dsn_replicas if external_pg_dsn_replicas is defined
+         else (('postgres://' + webitel_pg_user + ':' + webitel_pg_password
+                + '@' + webitel_pg_host + ':' + (haproxy_pg_ro_port | string)
+                + '/' + webitel_pg_db)
+               if webitel_pg_haproxy else webitel_pg_dsn_base) }}
+    webitel_public_url: >-
+      {{ webitel_public_url if webitel_public_url is defined else webitel_public_url_default }}
+
+- name: Resolve srvinfo URL
+  ansible.builtin.set_fact:
+    webitel_srvinfo_url: >-
+      {{ external_srvinfo_url if external_srvinfo_url is defined else webitel_public_url }}
+
+# S3 repo traffic is deliberately left going through the proxy (external AWS/MinIO).
+- name: Resolve no_proxy list for install-time proxy
+  ansible.builtin.set_fact:
+    _proxy_no_proxy: >-
+      {{ (['localhost', '127.0.0.1', '::1', '.consul']
+          + (groups['all'] | default([]) | map('extract', hostvars)
+             | selectattr('ansible_default_ipv4.address', 'defined')
+             | map(attribute='ansible_default_ipv4.address') | list)
+          + (proxy_no_proxy_extra | default([])))
+         | unique | join(',') }}
+
+- name: Resolve install-time proxy environment
+  ansible.builtin.set_fact:
+    proxy_env: >-
+      {{ {} if (http_proxy is not defined and https_proxy is not defined) else {
+           'http_proxy':  (http_proxy | default(https_proxy)),
+           'HTTP_PROXY':  (http_proxy | default(https_proxy)),
+           'https_proxy': (https_proxy | default(http_proxy)),
+           'HTTPS_PROXY': (https_proxy | default(http_proxy)),
+           'no_proxy': _proxy_no_proxy,
+           'NO_PROXY': _proxy_no_proxy,
+         } }}

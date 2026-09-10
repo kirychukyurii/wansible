@@ -1,0 +1,40 @@
+---
+haproxy_keyring: /usr/share/keyrings/haproxy.gpg
+haproxy_apt_branch: "3.2"
+
+# Offset from 5432 to avoid colliding with co-located Patroni; duplicated in
+# group_vars/all for DSN computation — keep in sync.
+haproxy_pg_rw_port: 6432
+haproxy_pg_ro_port: 6433
+
+haproxy_bind_addr: "0.0.0.0"
+
+haproxy_backends: >-
+  {{ (groups['patroni'] | default([])
+      | map('extract', hostvars)
+      | selectattr('datacenter', 'defined')
+      | selectattr('datacenter', '==', datacenter)
+      | map(attribute='inventory_hostname') | list)
+     or (groups['patroni'] | default([])) }}
+
+# Also sets the server-template slot count and gates the AMQP listener.
+haproxy_rabbitmq_backends: >-
+  {{ (groups['rabbitmq'] | default([])
+      | map('extract', hostvars)
+      | selectattr('datacenter', 'defined')
+      | selectattr('datacenter', '==', datacenter)
+      | map(attribute='inventory_hostname') | list)
+     or (groups['rabbitmq'] | default([])) }}
+
+# Offset from 5672 to avoid colliding with co-located rabbitmq.
+haproxy_amqp_port: 5673
+
+# Direct to Consul DNS, not dnsmasq, for fresher health-filtered answers.
+haproxy_consul_dns: "127.0.0.1:8600"
+
+# master is a pre-3.0 legacy alias; override for older Patroni.
+haproxy_pg_primary_tag: primary
+haproxy_pg_replica_tag: replica
+
+haproxy_metrics_enabled: false
+haproxy_metrics_port: 8405

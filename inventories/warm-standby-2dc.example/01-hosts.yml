@@ -1,0 +1,94 @@
+---
+# See README.md > HA deployment > Warm standby (2-DC) for the example topology.
+all:
+  children:
+    dc_a:
+      vars:
+        datacenter: dc_a
+        freeswitch_dispatcher_setid: 1
+      hosts:
+        dc_a_nginx:
+          ansible_host: 10.1.0.81
+          services: [nginx, grafana, webitel_frontend, haproxy, consul_agent, nomad_client]
+        dc_a_sip:
+          ansible_host: 10.1.0.82
+          services: [opensips, consul_agent, nomad_client]
+        dc_a_rtp:
+          ansible_host: 10.1.0.83
+          services: [rtpengine, consul_agent, nomad_client]
+        dc_a_switch:
+          ansible_host: 10.1.0.84
+          services: [freeswitch, webitel_flow_manager, haproxy, consul_agent, nomad_client]
+        dc_a_storage:
+          ansible_host: 10.1.0.85
+          services: [webitel_storage, haproxy, consul_agent, nomad_client]
+        dc_a_db1:
+          ansible_host: 10.1.0.86
+          patroni_priority: 3
+          services: [patroni, consul_agent, nomad_client]
+        dc_a_db2:
+          ansible_host: 10.1.0.87
+          patroni_priority: 2
+          services: [patroni, consul_agent, nomad_client]
+        dc_a_db3:
+          ansible_host: 10.1.0.88
+          patroni_priority: 1
+          services: [patroni, consul_agent, nomad_client]
+        dc_a_mq1:
+          ansible_host: 10.1.0.89
+          services: [rabbitmq, consul_server, nomad_server]
+        dc_a_mq2:
+          ansible_host: 10.1.0.90
+          services: [rabbitmq, consul_server, nomad_server]
+        dc_a_mq3:
+          ansible_host: 10.1.0.91
+          services: [rabbitmq, consul_server, nomad_server]
+        dc_a_app:
+          ansible_host: 10.1.0.92
+          services: [webitel_core, webitel_engine, webitel_call_center, webitel_messages, haproxy, consul_agent, nomad_client]
+
+    dc_b:
+      vars:
+        datacenter: dc_b
+        # Separate setid so routing keeps this DC out of rotation until failover.
+        freeswitch_dispatcher_setid: 2
+      hosts:
+        dc_b_nginx:
+          ansible_host: 10.2.0.81
+          services: [nginx, grafana, webitel_frontend, haproxy, consul_agent, nomad_client]
+        dc_b_sip:
+          ansible_host: 10.2.0.82
+          services: [opensips, consul_agent, nomad_client]
+        dc_b_rtp:
+          ansible_host: 10.2.0.83
+          services: [rtpengine, consul_agent, nomad_client]
+        dc_b_switch:
+          ansible_host: 10.2.0.84
+          services: [freeswitch, webitel_flow_manager, haproxy, consul_agent, nomad_client]
+        dc_b_storage:
+          ansible_host: 10.2.0.85
+          services: [webitel_storage, haproxy, consul_agent, nomad_client]
+        dc_b_db1:
+          ansible_host: 10.2.0.86
+          patroni_priority: 3
+          services: [patroni, consul_agent, nomad_client]
+        dc_b_db2:
+          ansible_host: 10.2.0.87
+          patroni_priority: 2
+          services: [patroni, consul_agent, nomad_client]
+        dc_b_db3:
+          ansible_host: 10.2.0.88
+          patroni_priority: 1
+          services: [patroni, consul_agent, nomad_client]
+        dc_b_mq1:
+          ansible_host: 10.2.0.89
+          services: [rabbitmq, consul_server, nomad_server]
+        dc_b_mq2:
+          ansible_host: 10.2.0.90
+          services: [rabbitmq, consul_server, nomad_server]
+        dc_b_mq3:
+          ansible_host: 10.2.0.91
+          services: [rabbitmq, consul_server, nomad_server]
+        dc_b_app:
+          ansible_host: 10.2.0.92
+          services: [webitel_core, webitel_engine, webitel_call_center, webitel_messages, haproxy, consul_agent, nomad_client]

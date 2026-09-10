@@ -1,0 +1,93 @@
+---
+- name: Generate node private keys (controller)
+  community.crypto.openssl_privatekey:
+    path: "{{ pki_local_dir }}/{{ item }}-key.pem"
+    type: "{{ pki_key_type }}"
+    curve: "{{ pki_ecc_curve if pki_key_type == 'ECC' else omit }}"
+    mode: "0600"
+  delegate_to: localhost
+  become: false
+  loop:
+    - "{{ inventory_hostname }}"
+    - "peer-{{ inventory_hostname }}"
+
+- name: Generate node CSRs (controller)
+  community.crypto.openssl_csr:
+    path: "{{ pki_local_dir }}/{{ item.name }}.csr"
+    privatekey_path: "{{ pki_local_dir }}/{{ item.name }}-key.pem"
+    common_name: "{{ inventory_hostname }}"
+    subject_alt_name: "{{ item.san }}"
+    extended_key_usage: "{{ item.eku }}"
+  delegate_to: localhost
+  become: false
+  loop:
+    - name: "{{ inventory_hostname }}"
+      san:
+        - "DNS:{{ inventory_hostname }}"
+        - "DNS:localhost"
+        - "IP:{{ ansible_facts.default_ipv4.address }}"
+        - "IP:127.0.0.1"
+      eku: [serverAuth, clientAuth]
+    - name: "peer-{{ inventory_hostname }}"
+      san:
+        - "DNS:{{ inventory_hostname }}"
+        - "IP:127.0.0.1"
+      eku: [clientAuth]
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Sign node certificates with CA (controller)
+  community.crypto.x509_certificate:
+    path: "{{ pki_local_dir }}/{{ item }}.pem"
+    csr_path: "{{ pki_local_dir }}/{{ item }}.csr"
+    ownca_path: "{{ pki_local_dir }}/ca.pem"
+    ownca_privatekey_path: "{{ pki_local_dir }}/ca-key.pem"
+    provider: ownca
+    ownca_not_after: "+{{ pki_cert_validity_days }}d"
+    mode: "0644"
+  delegate_to: localhost
+  become: false
+  loop:
+    - "{{ inventory_hostname }}"
+    - "peer-{{ inventory_hostname }}"
+
+- name: Ensure shared cert-reader group exists
+  ansible.builtin.group:
+    name: "{{ pki_cert_group }}"
+    system: true
+
+- name: Create remote PKI directory
+  ansible.builtin.file:
+    path: "{{ pki_remote_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# 0640 lets services in {{ pki_cert_group }} (consul, patroni) read private keys.
+- name: Copy CA and node certs to host
+  ansible.builtin.copy:
+    src: "{{ pki_local_dir }}/{{ item.src }}"
+    dest: "{{ pki_remote_dir }}/{{ item.dest }}"
+    owner: root
+    group: "{{ pki_cert_group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { src: "ca.pem", dest: "ca.pem", mode: "0644" }
+    - { src: "{{ inventory_hostname }}.pem", dest: "{{ inventory_hostname }}.pem", mode: "0644" }
+    - { src: "{{ inventory_hostname }}-key.pem", dest: "{{ inventory_hostname }}-key.pem", mode: "0640" }
+    - { src: "peer-{{ inventory_hostname }}.pem", dest: "peer-{{ inventory_hostname }}.pem", mode: "0644" }
+    - { src: "peer-{{ inventory_hostname }}-key.pem", dest: "peer-{{ inventory_hostname }}-key.pem", mode: "0640" }
+  loop_control:
+    label: "{{ item.dest }}"
+
+# Needed so consul's health check on patroni's REST API (:8008) trusts the
+# cert; otherwise it goes critical and consul deregisters webitel-postgres.
+- name: Install CA into system trust store
+  ansible.builtin.copy:
+    src: "{{ pki_local_dir }}/ca.pem"
+    dest: /usr/local/share/ca-certificates/webitel-ca.crt
+    owner: root
+    group: root
+    mode: "0644"
+  notify: update ca trust

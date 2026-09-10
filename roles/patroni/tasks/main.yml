@@ -1,0 +1,56 @@
+---
+# Must exist before postgres_common installs postgresql, otherwise the auto-created
+# 'main' cluster occupies data_dir and Patroni's initdb fails.
+- name: Ensure postgresql-common config directory exists
+  ansible.builtin.file:
+    path: /etc/postgresql-common
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  tags: [patroni_install]
+
+- name: Prevent Debian from auto-creating the default PostgreSQL cluster
+  ansible.builtin.copy:
+    dest: /etc/postgresql-common/createcluster.conf
+    content: |
+      # Ansible managed - do not edit
+      create_main_cluster = false
+    owner: root
+    group: root
+    mode: "0644"
+  tags: [patroni_install]
+
+- name: Install shared PostgreSQL repos and base packages
+  ansible.builtin.include_role:
+    name: postgres_common
+    tasks_from: install
+    apply:
+      tags: [patroni_install]
+  tags: [patroni_install]
+
+- name: Install Patroni packages and prepare node
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [patroni_install]
+  tags: [patroni_install]
+
+- name: Configure Patroni
+  ansible.builtin.include_tasks:
+    file: configure.yml
+    apply:
+      tags: [patroni_configure]
+  tags: [patroni_configure]
+
+# Standby DC is skipped explicitly: its leader also returns 200 on /leader,
+# but that cluster is read-only and replicates from the primary DC.
+- name: Bootstrap Webitel database
+  ansible.builtin.include_tasks:
+    file: bootstrap_db.yml
+    apply:
+      tags: [patroni_bootstrap]
+  when:
+    - not (patroni_is_standby_dc | default(false) | bool)
+    - inventory_hostname == (patroni_cluster_hosts | first)
+  tags: [patroni_bootstrap]

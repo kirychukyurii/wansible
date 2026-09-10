@@ -1,0 +1,12 @@
+---
+# regexp also matches a commented-out default line, uncommenting it.
+- name: "Set env keys in {{ webitel_env_block.path }}"
+  ansible.builtin.lineinfile:
+    path: "{{ webitel_env_block.path }}"
+    regexp: "^#?\\s*{{ item.key }}="
+    line: "{{ item.key }}={{ item.value }}"
+    backrefs: false
+  loop: "{{ (webitel_env_block.env | default({}) | combine(webitel_service_env_extra | default({}))) | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  notify: restart webitel service

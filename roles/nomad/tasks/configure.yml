@@ -1,0 +1,16 @@
+---
+- name: Render nomad configuration
+  ansible.builtin.template:
+    src: nomad.hcl.j2
+    dest: /etc/nomad.d/nomad.hcl
+    owner: root
+    group: root
+    mode: "0640"
+  notify: restart nomad
+
+- name: Enable and start nomad
+  ansible.builtin.systemd_service:
+    name: nomad
+    enabled: true
+    state: started
+    daemon_reload: true

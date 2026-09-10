@@ -1,0 +1,31 @@
+---
+# Aliases DNS-unfriendly service names (go.webitel.api) to query.consul names.
+# POST is not idempotent, so check by Name via GET first.
+- name: Get existing Consul prepared queries
+  ansible.builtin.uri:
+    url: http://127.0.0.1:8500/v1/query
+    method: GET
+    return_content: true
+  register: _consul_queries
+  run_once: true
+  delegate_to: "{{ groups['consul_server'][0] }}"
+
+- name: Create Consul prepared queries (if absent)
+  ansible.builtin.uri:
+    url: http://127.0.0.1:8500/v1/query
+    method: POST
+    body_format: json
+    body:
+      Name: "{{ item.name }}"
+      Service:
+        Service: "{{ item.service }}"
+        OnlyPassing: true
+    status_code: 200
+  loop:
+    - { name: "webitel-api", service: "go.webitel.api" }
+    - { name: "webitel-messages-bot", service: "webitel.chat.bot" }
+  loop_control:
+    label: "{{ item.name }}"
+  when: item.name not in (_consul_queries.json | map(attribute='Name') | list)
+  run_once: true
+  delegate_to: "{{ groups['consul_server'][0] }}"

@@ -1,0 +1,84 @@
+---
+- name: Resolve cluster topology facts
+  ansible.builtin.import_playbook: topology.yml
+
+- name: Webitel core (api, app, uac)
+  hosts: webitel_core
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - { role: webitel_service, webitel_service_name: core, tags: [webitel_core] }
+
+- name: Webitel engine
+  hosts: webitel_engine
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - { role: webitel_service, webitel_service_name: engine, tags: [webitel_engine] }
+
+- name: Webitel call center
+  hosts: webitel_call_center
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - { role: webitel_service, webitel_service_name: call_center, tags: [webitel_call_center] }
+
+- name: Webitel flow manager
+  hosts: webitel_flow_manager
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - { role: webitel_service, webitel_service_name: flow_manager, tags: [webitel_flow_manager] }
+
+- name: Webitel storage
+  hosts: webitel_storage
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - { role: webitel_service, webitel_service_name: storage, tags: [webitel_storage] }
+
+- name: Webitel messages
+  hosts: webitel_messages
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - { role: webitel_service, webitel_service_name: messages, tags: [webitel_messages] }
+
+- name: Webitel logger
+  hosts: webitel_logger
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - { role: webitel_service, webitel_service_name: logger, tags: [webitel_logger] }
+
+- name: Webitel cases
+  hosts: webitel_cases
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - { role: webitel_service, webitel_service_name: cases, tags: [webitel_cases] }
+
+- name: Webitel media exporter
+  hosts: webitel_media_exporter
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - { role: webitel_service, webitel_service_name: media_exporter, tags: [webitel_media_exporter] }
+
+# Runs last: needs webitel user + services already present (see roles/webitel_storage_key).
+- name: Webitel storage signing key
+  hosts: webitel_storage:webitel_engine:webitel_flow_manager
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - { role: webitel_storage_key, tags: [webitel_storage_key] }

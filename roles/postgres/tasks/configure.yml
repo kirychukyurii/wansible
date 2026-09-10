@@ -1,0 +1,35 @@
+---
+# Required before alter_system/pg_hba below, which connect via local socket.
+- name: Enable and start postgresql cluster
+  ansible.builtin.systemd_service:
+    name: "postgresql@{{ postgres_major }}-main"
+    enabled: true
+    state: started
+
+- name: Set listen_addresses
+  community.postgresql.postgresql_alter_system:
+    param: listen_addresses
+    value: "{{ postgres_listen_addresses }}"
+  become: true
+  become_user: postgres
+  notify: restart postgresql
+
+- name: Set max_connections
+  community.postgresql.postgresql_alter_system:
+    param: max_connections
+    value: "{{ postgres_max_connections | string }}"
+  become: true
+  become_user: postgres
+  notify: restart postgresql
+
+- name: Allow other inventory hosts to connect
+  community.postgresql.postgresql_pg_hba:
+    dest: "/etc/postgresql/{{ postgres_major }}/main/pg_hba.conf"
+    contype: host
+    databases: all
+    users: all
+    address: "{{ hostvars[item].ansible_default_ipv4.address }}/32"
+    method: scram-sha-256
+    state: present
+  loop: "{{ groups['all'] | difference([inventory_hostname]) }}"
+  notify: reload postgresql

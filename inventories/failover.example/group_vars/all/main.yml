@@ -1,0 +1,81 @@
+---
+datacenter: dc1
+
+webitel_version: "26.4"
+webitel_repo_s3_bucket: webitel-apt-repo
+webitel_repo_s3_region: eu-central-1
+webitel_repo_s3_access_key: "{{ vault_webitel_repo_s3_access_key }}"
+webitel_repo_s3_secret_key: "{{ vault_webitel_repo_s3_secret_key }}"
+
+freeswitch_signalwire_key: "{{ vault_freeswitch_signalwire_key }}"
+# Must not overlap rtpengine_rtp_port_*.
+# freeswitch_rtp_start_port: 20000
+# freeswitch_rtp_end_port: 39999
+
+# Must be the same value on every host; set vault_webitel_cookie_seed for production.
+webitel_cookie_seed: "{{ vault_webitel_cookie_seed | default(webitel_version) }}"
+
+rtpengine_mode: global # global | local
+# Must not overlap freeswitch_rtp_*_port.
+# rtpengine_rtp_port_min: 10000
+# rtpengine_rtp_port_max: 19999
+
+nginx_site_name: webitel.example.com   # nginx server_name (and letsencrypt domain)
+nginx_mail_address: cloud@example.com
+# nginx_tls_mode: self_signed        # letsencrypt | provided | self_signed (default: self_signed)
+# nginx_tls_cert: /path/on/controller/site.crt    # provided mode only (leaf or fullchain)
+# nginx_tls_chain:                                 # provided mode only, optional (intermediate(s), in order)
+#   - /path/on/controller/ca.crt
+# nginx_tls_key: /path/on/controller/site.key      # provided mode only
+
+grafana_basic_dashboards: false
+grafana_basic_dashboards_language: en
+grafana_db_name: grafana
+grafana_db_user: grafana
+grafana_db_password: "{{ vault_grafana_db_password | default('webitel') }}"
+# SELECT-only user, separate from grafana_db_user which owns the schema.
+grafana_datasource_user: grafana_ro
+grafana_datasource_password: "{{ vault_grafana_datasource_password | default('webitel') }}"
+
+locales_gen:
+  - en_US.UTF-8
+
+webitel_patroni_scope: webitel-postgres
+# Must match roles/haproxy/defaults/main.yml if changed.
+haproxy_pg_rw_port: 6432
+haproxy_pg_ro_port: 6433
+haproxy_amqp_port: 5673
+
+# Required for multi-host when consul_dns_forward is on: dnsmasq becomes the host's resolver,
+# and without an upstream it would only resolve the .consul zone.
+dns_upstream_servers:
+  - 1.1.1.1
+
+consul_encrypt_key: "{{ vault_consul_encrypt_key | default('') }}"
+
+rabbitmq_erlang_cookie: "{{ vault_rabbitmq_erlang_cookie | default('WEBITELRABBITMQCOOKIE') }}"
+
+# Derived variables (ha_mode, single_node, dependency addresses, DSN, AMQP
+# URL, webitel_public_url, etc.) are computed by the `topology` role
+# (playbooks/topology.yml) from the inventory topology. Do not set them here.
+#
+# Override hooks: use if a service is already deployed externally, bypassing the playbook topology.
+# external_pg_host: 10.0.0.5
+# external_pg_port: 5432
+# external_pg_dsn: "postgres://opensips:webitel@10.0.0.5:5432/webitel"
+# external_pg_dsn_replicas: "postgres://opensips:webitel@10.0.0.6:5432/webitel"
+# external_amqp_host: 10.0.0.7
+# external_amqp_url: "amqp://webitel:webitel@10.0.0.7:5672"
+# external_consul_host: 10.0.0.8
+# external_opensips_host: 10.0.0.9
+# external_srvinfo_url: "https://cc.example.com"
+# consul_pki_enabled: true                         # force PKI outside of HA
+# webitel_public_url: "https://cc.example.com"     # explicit public URL (LB/CDN in front of nginx)
+#
+# Service credentials below default to match the Webitel package. Changing these only affects
+# webitel_* service DSNs/URLs; opensips.cfg will not follow (it's baked into the package) —
+# that needs a separate package edit.
+# webitel_pg_user: opensips
+# webitel_pg_password: webitel
+# webitel_amqp_user: webitel
+# webitel_amqp_password: webitel

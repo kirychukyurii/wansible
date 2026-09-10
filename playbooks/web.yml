@@ -1,0 +1,42 @@
+---
+- name: Resolve cluster topology facts
+  ansible.builtin.import_playbook: topology.yml
+
+- name: Web tier
+  hosts: nginx
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - webitel_frontend
+    - nginx
+  tasks:
+    - name: Web | Include certbot
+      ansible.builtin.include_role:
+        name: certbot
+      when: nginx_tls_mode | default('self_signed') == 'letsencrypt'
+
+- name: Grafana
+  hosts: grafana
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles: [grafana]
+
+- name: Finish — server key
+  hosts: nginx
+  become: false
+  gather_facts: false
+  tasks:
+    - name: Finish | Get server identifier
+      ansible.builtin.uri:
+        url: "{{ webitel_srvinfo_url }}/api/srvinfo"
+        return_content: true
+      register: webitel_server_key
+
+    - name: Finish | Show license instructions
+      ansible.builtin.debug:
+        msg:
+          - A license is given for the unique installation.
+          - "Copy the server identifier below and create a request on the Support Portal:"
+          - "{{ webitel_server_key.content }}"

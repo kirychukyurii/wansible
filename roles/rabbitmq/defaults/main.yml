@@ -1,0 +1,18 @@
+---
+# Source of truth: webitel_amqp_* topology facts, defined before this role runs.
+rabbitmq_user: "{{ webitel_amqp_user }}"
+rabbitmq_password: "{{ webitel_amqp_password }}"
+rabbitmq_disk_free_limit: 2GB
+rabbitmq_listen_address: >-
+  {{ '127.0.0.1' if single_node | default(false)
+     else ansible_facts.default_ipv4.address }}
+rabbitmq_cluster_hosts: >-
+  {{ groups['rabbitmq'] | default([])
+     | map('extract', hostvars)
+     | selectattr('datacenter', 'defined')
+     | selectattr('datacenter', '==', datacenter)
+     | map(attribute='inventory_hostname') | list
+     or groups['rabbitmq'] | default([]) }}
+rabbitmq_keyring: /usr/share/keyrings/com.rabbitmq.team.asc
+rabbitmq_erlang_cookie: "{{ vault_rabbitmq_erlang_cookie | default('WEBITELRABBITMQCOOKIE') }}"
+rabbitmq_is_cluster: "{{ (rabbitmq_cluster_hosts | length) > 1 }}"

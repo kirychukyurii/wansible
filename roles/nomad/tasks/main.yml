@@ -1,0 +1,14 @@
+---
+- name: Install nomad
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [nomad_install]
+  tags: [nomad_install]
+
+- name: Configure nomad
+  ansible.builtin.include_tasks:
+    file: configure.yml
+    apply:
+      tags: [nomad_configure]
+  tags: [nomad_configure]

@@ -1,0 +1,302 @@
+---
+- name: Preflight checks
+  hosts: all
+  gather_facts: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  vars_files:
+    - vars/known_services.yml
+  tags: [always]
+  tasks:
+    - name: Preflight | Validate services against known list
+      ansible.builtin.assert:
+        that: >-
+          hostvars[inventory_hostname].services | default([])
+          | difference(webitel_known_services) | length == 0
+        fail_msg: >-
+          Unknown services on {{ inventory_hostname }}:
+          {{ hostvars[inventory_hostname].services | default([]) | difference(webitel_known_services) }}.
+          Valid services: {{ webitel_known_services | join(', ') }}
+        quiet: true
+
+    - name: Preflight | Require Debian 12 (bookworm) or 13 (trixie)
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.distribution == 'Debian'
+          - ansible_facts.distribution_major_version in ['12', '13']
+        fail_msg: >-
+          Unsupported OS: {{ ansible_facts.distribution }} {{ ansible_facts.distribution_major_version }}.
+          Webitel 26.4 supports Debian 12 (PostgreSQL 15) and Debian 13 (PostgreSQL 18).
+        quiet: true
+
+    - name: Preflight | Resolve PostgreSQL major (override via pg_major, else derive from Debian)
+      ansible.builtin.set_fact:
+        pg_major: "{{ pg_major | default('15' if ansible_facts.distribution_major_version == '12' else '18') }}"
+
+    - name: Preflight | Require amd64 on PostgreSQL hosts (webitel extension is amd64-only)
+      ansible.builtin.assert:
+        that: ansible_facts.architecture == 'x86_64'
+        fail_msg: "PostgreSQL with webitel extension requires amd64, got {{ ansible_facts.architecture }}"
+        quiet: true
+      when: "'postgres' in (services | default([]))"
+
+    - name: Preflight | Require amd64 on FreeSWITCH hosts (modules are amd64-only)
+      ansible.builtin.assert:
+        that: ansible_facts.architecture == 'x86_64'
+        fail_msg: "FreeSWITCH modules require amd64, got {{ ansible_facts.architecture }}"
+        quiet: true
+      when: "'freeswitch' in (services | default([]))"
+
+    - name: Preflight | Require S3 repo credentials
+      ansible.builtin.assert:
+        that:
+          - webitel_repo_s3_access_key | default('') | length > 0
+          - webitel_repo_s3_access_key != 'CHANGE_ME'
+          - webitel_repo_s3_secret_key | default('') | length > 0
+          - webitel_repo_s3_secret_key != 'CHANGE_ME'
+        fail_msg: "Set webitel_repo_s3_access_key / webitel_repo_s3_secret_key (see group_vars/all/vault.yml.example)"
+        quiet: true
+
+    - name: Preflight | Require SignalWire key on FreeSWITCH hosts
+      ansible.builtin.assert:
+        that:
+          - freeswitch_signalwire_key | default('') | length > 0
+          - not freeswitch_signalwire_key.startswith('pat_CHANGE')
+        fail_msg: "Set freeswitch_signalwire_key (SignalWire Personal Access Token)"
+        quiet: true
+      when: "'freeswitch' in (services | default([]))"
+
+    - name: Preflight | nginx_tls_mode must be a known value
+      ansible.builtin.assert:
+        that:
+          - nginx_tls_mode | default('self_signed') in ['letsencrypt', 'provided', 'self_signed']
+        fail_msg: "nginx_tls_mode must be one of: letsencrypt, provided, self_signed"
+        quiet: true
+      when: "'nginx' in (services | default([]))"
+
+    - name: Preflight | Require nginx_site_name for nginx TLS
+      ansible.builtin.assert:
+        that:
+          - nginx_site_name | default('') | length > 0
+        fail_msg: "nginx TLS requires nginx_site_name (CN / server_name)"
+        quiet: true
+      when: "'nginx' in (services | default([]))"
+
+    - name: Preflight | Require mail address for letsencrypt
+      ansible.builtin.assert:
+        that:
+          - nginx_mail_address | default('') | length > 0
+        fail_msg: "nginx_tls_mode=letsencrypt requires nginx_mail_address"
+        quiet: true
+      when:
+        - "'nginx' in (services | default([]))"
+        - nginx_tls_mode | default('self_signed') == 'letsencrypt'
+
+    - name: Preflight | Require cert+key sources for provided TLS
+      ansible.builtin.assert:
+        that:
+          - nginx_tls_cert | default('') | length > 0
+          - nginx_tls_key | default('') | length > 0
+        fail_msg: >-
+          nginx_tls_mode=provided requires nginx_tls_cert and nginx_tls_key
+          (controller-side paths to certificate and private key)
+        quiet: true
+      when:
+        - "'nginx' in (services | default([]))"
+        - nginx_tls_mode | default('self_signed') == 'provided'
+
+    # default('') passes when unset since roles/topology/defaults are already safe.
+    - name: Preflight | Service credentials must not contain regexp/URL-breaking characters
+      ansible.builtin.assert:
+        that:
+          - webitel_pg_user | default('') | select('in', _forbidden_user) | list | length == 0
+          - webitel_pg_password | default('') | select('in', _forbidden_pass) | list | length == 0
+          - webitel_amqp_user | default('') | select('in', _forbidden_user) | list | length == 0
+          - webitel_amqp_password | default('') | select('in', _forbidden_pass) | list | length == 0
+        fail_msg: >-
+          Credentials contain characters that break opensips.cfg/URL rewrite.
+          Login (webitel_pg_user / webitel_amqp_user): no @ : " or space.
+          Password (webitel_pg_password / webitel_amqp_password): no @ " or space.
+        quiet: true
+      vars:
+        _forbidden_user: '@:" '
+        _forbidden_pass: '@" '
+
+- name: Preflight topology checks (cross-host)
+  hosts: localhost
+  gather_facts: false
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  tags: [always]
+  tasks:
+    - name: Preflight | Single rtpengine/opensips/postgres per datacenter (phase 1)
+      ansible.builtin.assert:
+        that: >-
+          groups[item] | default([])
+          | map('extract', hostvars)
+          | groupby('datacenter')
+          | map(attribute='1')
+          | map('length')
+          | select('gt', 1)
+          | list | length == 0
+        fail_msg: "Phase 1 supports exactly one '{{ item }}' host per datacenter"
+        quiet: true
+      loop: [rtpengine, opensips, postgres]
+
+    - name: Preflight | Host cannot be in both 'postgres' and 'patroni' (standalone vs HA — Patroni manages PostgreSQL)
+      ansible.builtin.assert:
+        that: >-
+          (groups['postgres'] | default([]))
+          | intersect(groups['patroni'] | default([]))
+          | length == 0
+        fail_msg: >-
+          Hosts {{ (groups['postgres'] | default([])) | intersect(groups['patroni'] | default([])) | join(', ') }}
+          are in both 'postgres' and 'patroni'. Patroni manages PostgreSQL itself —
+          drop the 'postgres' service from Patroni nodes (use 'postgres' only for
+          standalone non-HA PostgreSQL).
+        quiet: true
+
+    - name: Preflight | Consul_server cluster must be in a single datacenter (set consul_allow_multidc=true for warm-standby with per-DC clusters)
+      ansible.builtin.assert:
+        that: >-
+          (consul_allow_multidc | default(false) | bool)
+          or (groups['consul_server'] | default([])
+              | map('extract', hostvars)
+              | map(attribute='datacenter')
+              | unique | list | length) <= 1
+        fail_msg: >-
+          All consul_server hosts must be in the same datacenter.
+          Multi-DC consul federation is not supported in this setup.
+          Set consul_allow_multidc=true for warm-standby with independent per-DC consul clusters.
+        quiet: true
+
+    - name: Preflight | Each datacenter with hosts must have at least one consul_server
+      ansible.builtin.assert:
+        that: >-
+          (groups['all']
+           | map('extract', hostvars)
+           | map(attribute='datacenter')
+           | unique | list)
+          | difference(
+              groups['consul_server'] | default([])
+              | map('extract', hostvars)
+              | map(attribute='datacenter')
+              | unique | list)
+          | length == 0
+        fail_msg: >-
+          Every datacenter must have at least one consul_server.
+          Missing consul_server in some datacenter(s).
+        quiet: true
+
+    - name: Preflight | dns_upstream_servers must be set on every host (HA enables DNS forwarding which overrides /etc/resolv.conf)
+      ansible.builtin.assert:
+        that:
+          - hostvars[item].dns_upstream_servers | default([]) | length > 0
+        fail_msg: >-
+          Host '{{ item }}' has no dns_upstream_servers. In multi-host (HA) mode,
+          consul_dns_forward is enabled and systemd-resolved takes over
+          /etc/resolv.conf — without upstream DNS the host can only resolve .consul.
+          Set dns_upstream_servers (per-DC in group_vars/<dc>.yml).
+        quiet: true
+      loop: "{{ groups['all'] | default([]) }}"
+      loop_control:
+        label: "{{ item }}"
+      # single_node disables consul_dns_forward, so recursors aren't needed
+      when: (groups['all'] | default([])) | length > 1
+
+    - name: Preflight | Patroni cluster must not span datacenters (stretch=phase 3, set patroni_allow_multidc=true for warm-standby)
+      ansible.builtin.assert:
+        that: >-
+          (patroni_allow_multidc | default(false) | bool)
+          or (groups['patroni'] | default([])
+              | map('extract', hostvars)
+              | map(attribute='datacenter')
+              | unique | list | length) <= 1
+        fail_msg: >-
+          Stretch Patroni across datacenters needs etcd DCS (phase 3).
+          Keep patroni within one datacenter, or set patroni_allow_multidc=true
+          for warm-standby (independent per-DC clusters).
+        quiet: true
+
+    - name: Preflight | Multi-DC Patroni requires primary_datacenter (else each DC is an independent primary)
+      ansible.builtin.assert:
+        that: >-
+          (groups['patroni'] | default([]) | map('extract', hostvars)
+           | map(attribute='datacenter') | unique | list | length) <= 1
+          or (primary_datacenter is defined
+              and primary_datacenter in (groups['patroni'] | default([])
+                  | map('extract', hostvars)
+                  | map(attribute='datacenter') | unique | list))
+        fail_msg: >-
+          Patroni spans multiple datacenters but primary_datacenter is unset or
+          is not one of them. Without it each DC bootstraps as an INDEPENDENT
+          primary (no cross-DC replication). Set primary_datacenter to the
+          replication-source datacenter (e.g. primary_datacenter: dc_a).
+        quiet: true
+
+    - name: Preflight | RabbitMQ cluster must be in a single datacenter (set rabbitmq_allow_stretch=true to override)
+      ansible.builtin.assert:
+        that: >-
+          (rabbitmq_allow_stretch | default(false) | bool)
+          or (groups['rabbitmq'] | default([])
+              | map('extract', hostvars)
+              | map(attribute='datacenter')
+              | unique | list | length) <= 1
+        fail_msg: >-
+          RabbitMQ cluster must not span datacenters (network partitions risk split-brain).
+          Set rabbitmq_allow_stretch=true to override this check.
+        quiet: true
+
+    - name: Preflight | Nomad_server cluster must be in a single datacenter (set nomad_allow_multidc=true for warm-standby with per-DC clusters)
+      ansible.builtin.assert:
+        that: >-
+          (nomad_allow_multidc | default(false) | bool)
+          or (groups['nomad_server'] | default([])
+              | map('extract', hostvars)
+              | map(attribute='datacenter')
+              | unique | list | length) <= 1
+        fail_msg: >-
+          All nomad_server hosts must be in the same datacenter.
+          Multi-region Nomad federation is not supported in this setup.
+          Set nomad_allow_multidc=true for warm-standby with independent per-DC nomad clusters.
+        quiet: true
+
+    # Quorum is per-DC (independent clusters); a global sum doesn't imply an even quorum.
+    - name: Preflight | Warn if a per-datacenter cluster has an even node count (even quorum is not recommended)
+      ansible.builtin.debug:
+        msg: >-
+          WARNING: '{{ item }}' has an even node count in some datacenter
+          (datacenters: {{ groups[item] | default([]) | map('extract', hostvars) | groupby('datacenter') | map(attribute='0') | list }},
+          per-DC counts: {{ groups[item] | default([]) | map('extract', hostvars) | groupby('datacenter') | map(attribute='1') | map('length') | list }}).
+          Even-numbered quorum is not recommended — one failure loses quorum.
+          Consider an odd count (3, 5, ...) per datacenter.
+      loop: [consul_server, nomad_server, patroni]
+      when: >-
+        groups[item] | default([])
+        | map('extract', hostvars)
+        | groupby('datacenter')
+        | map(attribute='1') | map('length')
+        | select('gt', 1) | select('divisibleby', 2)
+        | list | length > 0
+
+    # Sidecar mode: services reach PG/AMQP via local haproxy (127.0.0.1).
+    - name: Preflight | PG/AMQP consumers must have local HAProxy (sidecar)
+      ansible.builtin.assert:
+        that:
+          - (_pg_amqp_consumers | difference(groups['haproxy'] | default([]))) | length == 0
+        fail_msg: >-
+          HAProxy sidecar is active, but these hosts consume PG/AMQP without a local
+          haproxy: {{ _pg_amqp_consumers | difference(groups['haproxy'] | default([])) | join(', ') }}.
+          Add 'haproxy' to the services of these hosts.
+        quiet: true
+      vars:
+        _pg_amqp_consumers: >-
+          {{ ((groups['webitel_core'] | default([]))
+              + (groups['webitel_engine'] | default([]))
+              + (groups['webitel_call_center'] | default([]))
+              + (groups['webitel_flow_manager'] | default([]))
+              + (groups['webitel_storage'] | default([]))
+              + (groups['webitel_messages'] | default([]))
+              + (groups['webitel_logger'] | default([]))
+              + (groups['webitel_cases'] | default([]))
+              + (groups['webitel_media_exporter'] | default([]))) | unique }}
+      when:
+        - (groups['haproxy'] | default([])) | length > 0

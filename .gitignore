@@ -1,2 +1,10 @@
 .idea
+.ansible/
 inventories/staging/
+collections/
+*.retry
+inventories/production/
+inventories/orbstack-test/
+!inventories/*.example/
+inventories/*/pki/
+inventories/*/storage/

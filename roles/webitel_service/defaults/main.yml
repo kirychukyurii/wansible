@@ -1,0 +1,4 @@
+---
+# Takes precedence over each env block's env (combine). Applies to every file
+# in multi-unit services — set only shared keys, or scope with --limit.
+webitel_service_env_extra: {}

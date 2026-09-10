@@ -1,8 +1,0 @@
----
-- name: Install webitel-common
-  ansible.builtin.apt:
-    name:
-      - webitel-common
-    state: latest
-    update_cache: false
-    install_recommends: false

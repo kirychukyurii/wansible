@@ -1,0 +1,7 @@
+---
+# base.yml/pki.yml are separate playbooks so components can be re-run independently.
+- name: Consul cluster
+  ansible.builtin.import_playbook: consul.yml
+
+- name: Nomad cluster
+  ansible.builtin.import_playbook: nomad.yml

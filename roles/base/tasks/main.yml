@@ -1,0 +1,21 @@
+---
+- name: Install common packages
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [base_install]
+  tags: [base_install]
+
+- name: Configure Webitel APT repository
+  ansible.builtin.include_tasks:
+    file: repo.yml
+    apply:
+      tags: [base_repo]
+  tags: [base_repo]
+
+- name: Configure system
+  ansible.builtin.include_tasks:
+    file: configure.yml
+    apply:
+      tags: [base_configure]
+  tags: [base_configure]

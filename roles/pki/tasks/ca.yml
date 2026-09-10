@@ -1,0 +1,48 @@
+---
+- name: Ensure local PKI directory exists (controller)
+  ansible.builtin.file:
+    path: "{{ pki_local_dir }}"
+    state: directory
+    mode: "0700"
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Generate CA private key (controller)
+  community.crypto.openssl_privatekey:
+    path: "{{ pki_local_dir }}/ca-key.pem"
+    type: "{{ pki_key_type }}"
+    curve: "{{ pki_ecc_curve if pki_key_type == 'ECC' else omit }}"
+    mode: "0600"
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Generate CA CSR (controller)
+  community.crypto.openssl_csr:
+    path: "{{ pki_local_dir }}/ca.csr"
+    privatekey_path: "{{ pki_local_dir }}/ca-key.pem"
+    common_name: "{{ pki_ca_cn }}"
+    organization_name: "{{ pki_ca_o }}"
+    basic_constraints:
+      - "CA:TRUE"
+    basic_constraints_critical: true
+    key_usage:
+      - keyCertSign
+      - cRLSign
+    key_usage_critical: true
+  delegate_to: localhost
+  run_once: true
+  become: false
+
+- name: Self-sign CA certificate (controller)
+  community.crypto.x509_certificate:
+    path: "{{ pki_local_dir }}/ca.pem"
+    privatekey_path: "{{ pki_local_dir }}/ca-key.pem"
+    csr_path: "{{ pki_local_dir }}/ca.csr"
+    provider: selfsigned
+    selfsigned_not_after: "+{{ pki_cert_validity_days }}d"
+    mode: "0644"
+  delegate_to: localhost
+  run_once: true
+  become: false

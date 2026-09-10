@@ -1,0 +1,36 @@
+---
+- name: Resolve cluster topology facts
+  ansible.builtin.import_playbook: topology.yml
+
+- name: Consul servers
+  hosts: consul_server
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  serial: 1
+  roles: [consul]
+
+- name: Consul agents
+  hosts: "consul_agent:!consul_server"
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - role: consul
+      vars:
+        consul_role: agent
+
+# Separate play: cluster must be formed before POSTing queries to the leader.
+- name: Consul prepared queries
+  hosts: consul_server
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  tasks:
+    - name: Create Consul prepared queries
+      ansible.builtin.include_role:
+        name: consul
+        tasks_from: prepared_queries
+      run_once: true
+      when: not single_node | default(false)
+      tags: [consul_queries]

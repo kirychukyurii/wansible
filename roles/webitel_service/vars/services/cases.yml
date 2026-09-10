@@ -1,0 +1,13 @@
+---
+webitel_service_spec:
+  package: webitel-cases
+  units: [webitel-cases]
+  env_files:
+    - path: /etc/default/webitel-cases
+      env:
+        DATA_SOURCE: "{{ webitel_pg_dsn_base }}?application_name=cases\
+          &sslmode={{ webitel_cases_pg_sslmode | default(webitel_pg_sslmode) }}\
+          &connect_timeout={{ webitel_cases_pg_connect_timeout | default(webitel_pg_connect_timeout) }}"
+        CONSUL: "{{ webitel_consul_address }}:8500"
+        GRPC_ADDR: "{{ '127.0.0.1' if single_node | default(false) else ansible_facts.default_ipv4.address }}:{{ webitel_cases_grpc_port }}"
+        MICRO_BROKER_ADDRESS: "{{ webitel_amqp_url }}?heartbeat={{ webitel_cases_amqp_heartbeat | default(webitel_amqp_heartbeat) }}"

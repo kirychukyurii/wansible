@@ -1,0 +1,27 @@
+---
+- name: Resolve cluster topology facts
+  ansible.builtin.import_playbook: topology.yml
+
+- name: FreeSWITCH
+  hosts: freeswitch
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - freeswitch
+
+- name: RTPEngine
+  hosts: rtpengine
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - rtpengine
+
+- name: OpenSIPS
+  hosts: opensips
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles:
+    - opensips

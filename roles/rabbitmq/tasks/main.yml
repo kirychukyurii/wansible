@@ -1,10 +1,22 @@
 ---
-- when: inventory_hostname in groups['rabbitmq']
-  block:
-    - ansible.builtin.include_tasks: install.yml
-      tags:
-        - rabbitmq_install
+- name: Install RabbitMQ and repositories
+  ansible.builtin.include_tasks:
+    file: install.yml
+    apply:
+      tags: [rabbitmq_install]
+  tags: [rabbitmq_install]
 
-    - ansible.builtin.include_tasks: configure.yml
-      tags:
-        - rabbitmq_configure
+- name: Configure RabbitMQ cluster (erlang cookie + /etc/hosts)
+  ansible.builtin.include_tasks:
+    file: cluster.yml
+    apply:
+      tags: [rabbitmq_cluster]
+  when: rabbitmq_is_cluster | bool
+  tags: [rabbitmq_cluster]
+
+- name: Configure RabbitMQ
+  ansible.builtin.include_tasks:
+    file: configure.yml
+    apply:
+      tags: [rabbitmq_configure]
+  tags: [rabbitmq_configure]
