@@ -35,7 +35,7 @@ Tags: `patroni_install`, `patroni_configure` (see `tasks/main.yml`), `patroni_bo
 
 ## [VM] Items to verify on a real cluster
 
-- **Consul service name**: After cluster is up, confirm `dig @127.0.0.1 -p 8600 master.{{ patroni_scope }}.service.consul` resolves to the leader IP.
+- **Consul service name**: After cluster is up, confirm `dig @127.0.0.1 -p 8600 primary.{{ patroni_scope }}.service.consul` resolves to the leader IP.
 - **python3-consul vs patroni[consul] pip**: `python3-consul` package availability on Debian 12 (bookworm) / Debian 13 (trixie). If missing, install `patroni[consul]` via pip instead.
 - **patroni package version**: Confirm `patroni` deb is available in Debian repos (or add Patroni's own repo). On some Debian versions patroni may need to be installed from pip or a 3rd-party apt source.
 - **pg_hba completeness**: Verify the `pg_hba` block covers all webitel service hosts (non-patroni cluster hosts get `host all {{ patroni_app_user }}`; grafana hosts additionally get `host {{ grafana_db_name }} {{ grafana_db_user }}` for the backend DB and `host {{ webitel_pg_db }} {{ grafana_datasource_user }}` for the read-only datasource).

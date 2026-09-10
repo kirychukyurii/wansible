@@ -11,7 +11,7 @@
 <!-- TOC -->
   * [Requirements](#requirements)
   * [Quickstart](#quickstart)
-  * [HA deployment](#ha-deployment)
+  * [Deployment profiles](#deployment-profiles)
   * [Inventory model](#inventory-model)
   * [Services](#services)
   * [Key variables](#key-variables)
@@ -83,11 +83,11 @@ have been measured on production hardware yet.
 | `warm_standby` | loss of a whole datacenter | replication lag at the moment of loss — seconds when healthy, unbounded once the link degrades | minutes to hours, **manual** | how fast the external controller promotes and reroutes; no replication slot, so extreme lag means a rebuild |
 | `stretch` | loss of a whole datacenter | ~0, at most 1 MiB of WAL — or exactly 0 with `patroni_synchronous_mode: true` | ~60–90 s, automatic | `patroni_ttl` 60 s + promotion; sync mode trades a WAN round trip per commit for RPO 0 |
 
-Two things the table does not cover. First, RTO above is the **database** only: the
-application layer, DNS and SIP routing add their own time, and in `warm_standby` the
-whole switch is driven by Nomad jobs and the external controller, not by this playbook.
-Second, `failover` and `stretch` fail over on their own, while `warm_standby` never does
-— promotion there is always someone's decision.
+Two caveats:
+
+- RTO is the **database** only — application, DNS and SIP routing add their own.
+- Only `failover` and `stretch` promote themselves. `warm_standby` promotion is always
+  a decision, carried out by Nomad jobs and the external controller, not by this playbook.
 
 `stretch` is active/passive: traffic is served by the datacenter holding the database
 leader. It widens Consul and Patroni raft timings automatically (`consul_raft_multiplier`,
@@ -99,7 +99,8 @@ Two datacenters without replication between them is not a profile: that is two s
 
 All profiles use the same `site.yml` playbook; the inventory's constructed groups
 (`consul_server`, `patroni`, `nomad_server`, `rabbitmq`) determine cluster vs. single-node
-behavior automatically.
+behavior automatically. The playbook brings the Nomad cluster up and registers it in
+Consul, but deploys no Nomad jobs — scheduling is a separate step.
 
 Validate an inventory without touching any host:
 
@@ -108,42 +109,6 @@ ansible-playbook -i inventories/<name> playbooks/validate_topology.yml
 ```
 
 Design rationale: `docs/superpowers/specs/2026-09-10-topology-profiles-design.md`.
-
-#### Failover (1-DC, single cluster)
-
-DCS=Consul for the Patroni cluster. See `inventories/failover.example/01-hosts.yml` for the
-full host/service mapping.
-
-#### Warm standby (2-DC, per-DC clusters)
-
-Each datacenter (`dc_a`, `dc_b`) runs its own isolated Consul, Patroni, Nomad, and RabbitMQ
-cluster. The datacenter named by `primary_datacenter` bootstraps the primary Patroni cluster;
-every other datacenter brings its Patroni up as a `standby_cluster` streaming from it, using
-the primary DC's node IPs directly (Patroni adds `target_session_attrs=read-write`, so it
-follows the real leader across a failover inside the primary DC). Replication is asynchronous
-and holds no replication slot: on extreme lag the standby is rebuilt.
-
-Promoting the standby datacenter is **not** done by this playbook — that belongs to Nomad jobs
-and the external controller. RabbitMQ is not federated across datacenters.
-
-`inventories/warm-standby-2dc.example` lays out a full HA topology, 12 nodes per DC:
-
-| Node | Services |
-|---|---|
-| `nginx` | nginx, grafana, webitel_frontend, haproxy |
-| `sip` | opensips |
-| `rtp` | rtpengine |
-| `switch` | freeswitch, webitel_flow_manager, haproxy |
-| `storage` | webitel_storage, haproxy |
-| `db1`-`db3` | patroni (priority 3/2/1) |
-| `mq1`-`mq3` | rabbitmq, consul_server, nomad_server |
-| `app` | webitel_core, webitel_engine, webitel_call_center, webitel_messages, haproxy |
-
-`consul_agent` and `nomad_client` run on every node except `mq*` (server mode there); `haproxy`
-runs on any node that talks to Postgres or RabbitMQ.
-
-> **Note:** Nomad jobs are not deployed by this playbook (phase 3). The clusters are brought up
-> and registered in Consul; job scheduling is a separate step.
 
 ### Generating secrets
 
@@ -201,7 +166,7 @@ After a successful run, confirm cluster health on any cluster node:
 consul members
 
 # Resolve the Patroni leader via Consul DNS
-dig @127.0.0.1 -p 8600 master.webitel-postgres.service.consul
+dig @127.0.0.1 -p 8600 primary.webitel-postgres.service.consul
 
 # Patroni — expect 1 Leader + N Replica, Lag 0
 patronictl -c /etc/patroni/config.yml list
