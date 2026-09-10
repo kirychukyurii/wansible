@@ -1,0 +1,14 @@
+---
+all:
+  vars:
+    topology_profile: hyperscale
+    dns_upstream_servers: [10.0.0.1]
+  children:
+    dc1:
+      vars:
+        datacenter: dc1
+      hosts:
+        node1: {}
+    consul_server:
+      hosts:
+        node1: {}
