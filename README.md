@@ -67,11 +67,19 @@ the declared profile, so unsupported shapes fail before the first package is ins
 | **Promotion** | — | — | Patroni, automatic | external controller, manual | Patroni, automatic |
 | **RPO** | last backup | last backup | ~0 (≤ 1 MiB WAL) | replication lag; unbounded once the link degrades | ~0 (≤ 1 MiB WAL), or 0 in sync mode |
 | **RTO** | hours | hours (DB) | ~30–45 s | minutes to hours | ~60–90 s |
-| **Bounded by** | backup schedule and restore speed | same; the DB is a single point of failure | `patroni_ttl` 30 s + promotion; `maximum_lag_on_failover` 1 MiB | how fast the external controller promotes and reroutes; no replication slot, so extreme lag means a rebuild | `patroni_ttl` 60 s + promotion; sync mode trades a WAN round trip per commit for RPO 0 |
 
 RPO and RTO are database-layer **targets with the shipped defaults**, not guarantees —
 they depend on your link, disk and backup schedule, and none have been measured on
-production hardware yet. Two further caveats:
+production hardware yet. What bounds them:
+
+- `failover` and `stretch` — `patroni_ttl` (30 s / 60 s) plus promotion time for RTO,
+  `maximum_lag_on_failover` (1 MiB) for RPO.
+- `warm_standby` — how fast the external controller promotes and reroutes. There is no
+  replication slot, so extreme lag means rebuilding the standby rather than catching up.
+- `singlehost` and `multihost` — your backup schedule and restore speed. The database is
+  a single point of failure in both.
+
+Two caveats:
 
 - RTO is the **database** only — application, DNS and SIP routing add their own.
 - Only `failover` and `stretch` promote themselves. `warm_standby` promotion is always
