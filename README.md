@@ -48,7 +48,9 @@ ansible-vault encrypt inventories/production/group_vars/all/vault.yml
 ansible-playbook -i inventories/production site.yml --ask-vault-pass
 ```
 
-For a multi-host deployment use `inventories/multihost.example` as the starting template instead.
+Step 2 picks the shape: `multihost.example` for several hosts in one datacenter,
+`failover.example` for an HA cluster, `warm-standby-2dc.example` for two datacenters —
+in the multi-DC case step 3 is also where you set each host's real IP and `datacenter` label.
 
 Every tunable is documented where you set it: cluster-wide ones are commented in place in
 each example's `group_vars/all/main.yml`, role-specific ones in `roles/<name>/defaults/main.yml`.
@@ -145,21 +147,6 @@ vault_freeswitch_signalwire_key: "..."
 6. Patroni cluster (serial: 1)
 7. RabbitMQ cluster (serial: 1)
 8. Webitel application services
-
-Run the playbook once:
-
-```bash
-ansible-playbook -i inventories/production site.yml --ask-vault-pass
-```
-
-For a 2-DC warm-standby deployment use `inventories/warm-standby-2dc.example` as the template:
-
-```bash
-cp -r inventories/warm-standby-2dc.example inventories/production
-$EDITOR inventories/production/01-hosts.yml   # fill in real IPs and datacenter labels
-ansible-vault encrypt inventories/production/group_vars/all/vault.yml
-ansible-playbook -i inventories/production site.yml --ask-vault-pass
-```
 
 ### Verification commands
 
