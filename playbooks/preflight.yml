@@ -25,6 +25,19 @@
           Valid services: {{ webitel_known_services | join(', ') }}
         quiet: true
 
+    - name: Preflight | webitel_version must be MAJOR.MINOR
+      ansible.builtin.assert:
+        that:
+          - webitel_version is defined
+          - (webitel_version | string) is match('^[0-9]+\.[0-9]+$')
+        fail_msg: >-
+          webitel_version must look like 26.6 or 26.06, got
+          '{{ webitel_version | default("<unset>") }}'. Both spellings are
+          accepted: the apt component strips the leading zero, so either one
+          resolves to '{{ (webitel_version | default("") | string | regex_replace("\.0+(\d)", ".\1")) }}-releases'.
+        quiet: true
+      run_once: true
+
     - name: Preflight | Require Debian 12 (bookworm) or 13 (trixie)
       ansible.builtin.assert:
         that:

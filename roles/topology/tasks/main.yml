@@ -15,7 +15,12 @@
     # true means nomad owns the systemd unit lifecycle; Ansible still
     # installs the package and writes env but won't enable/start it.
     nomad_managed: "{{ (groups['nomad_client'] | default([])) | length > 0 }}"
-    webitel_release_component: "{{ webitel_version }}-releases"
+    # The S3 repo component drops the leading zero in the minor part
+    # (26.6-releases), but releases are habitually written 26.06. Accept both
+    # spellings of webitel_version and normalise here, so a habit does not
+    # silently point apt at a component that does not exist.
+    webitel_release_component: >-
+      {{ (webitel_version | string | regex_replace('\.0+(\d)', '.\1')) }}-releases
     patroni_is_standby_dc: >-
       {{ (primary_datacenter is defined) and (datacenter != primary_datacenter) }}
     # 'global' only under the stretch profile: one Consul raft and one Patroni
