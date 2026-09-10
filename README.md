@@ -134,34 +134,9 @@ all:
         # ... more services
 ```
 
-Every valid value for `services`, in the order they are listed in
-`playbooks/vars/known_services.yml` — preflight rejects anything not on that list:
-
-| Service | Description |
-|---|---|
-| `consul_server` | Consul in server mode: service discovery, and the DCS Patroni elects through |
-| `consul_agent` | Consul in client mode, for hosts that only consume discovery |
-| `nomad_server` | Nomad server (scheduling quorum) |
-| `nomad_client` | Nomad client. Its presence hands unit lifecycle to Nomad: Ansible still installs packages and writes env, but does not enable or start the units |
-| `patroni` | PostgreSQL managed by Patroni. Replaces `postgres` in the clustered profiles — a host must not be in both |
-| `postgres` | Standalone PostgreSQL + TimescaleDB + Webitel extension |
-| `rabbitmq` | RabbitMQ message broker |
-| `freeswitch` | FreeSWITCH media server |
-| `rtpengine` | Sipwise RTPEngine (media relay) |
-| `opensips` | OpenSIPS SIP proxy |
-| `nginx` | NGINX reverse proxy and TLS termination |
-| `grafana` | Grafana analytics and dashboards |
-| `haproxy` | Local TCP balancer for PostgreSQL (RW/RO) and RabbitMQ; runs as a sidecar on hosts that talk to them |
-| `webitel_core` | Webitel API, App and UAC services |
-| `webitel_engine` | Webitel Engine (call routing) |
-| `webitel_call_center` | Webitel Call Center service |
-| `webitel_flow_manager` | Webitel Flow Manager (IVR / dialplan) |
-| `webitel_storage` | Webitel Storage (recordings, files) |
-| `webitel_messages` | Webitel Messages (chat channels) |
-| `webitel_logger` | Webitel Logger (audit log) |
-| `webitel_cases` | Webitel Cases (CRM cases) |
-| `webitel_media_exporter` | Webitel Media Exporter (recording export) |
-| `webitel_frontend` | Webitel frontend web applications |
+The full set of values `services` accepts lives in
+[`playbooks/vars/known_services.yml`](playbooks/vars/known_services.yml). Preflight
+validates against that file, so it cannot fall out of date the way a second copy here would.
 
 Inspect the resulting groups at any time:
 

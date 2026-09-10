@@ -1,4 +1,7 @@
 ---
+# Every value a host may put in its `services` list. Preflight rejects anything
+# not listed here, and the constructed inventory plugin turns each name into an
+# Ansible group.
 webitel_known_services:
   - consul_server
   - consul_agent
@@ -7,12 +10,12 @@ webitel_known_services:
   - patroni
   - postgres
   - rabbitmq
+  - haproxy
   - freeswitch
   - rtpengine
   - opensips
   - nginx
   - grafana
-  - haproxy
   - webitel_core
   - webitel_engine
   - webitel_call_center
