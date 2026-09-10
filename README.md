@@ -51,21 +51,43 @@ ansible-playbook -i inventories/production site.yml --ask-vault-pass
 
 For a multi-host deployment use `inventories/multihost.example` as the starting template instead.
 
-## HA deployment
+## Deployment profiles
 
-Webitel 26.4 supports three HA deployment schemes.
+Every inventory declares what it is via `topology_profile` in
+`group_vars/all/main.yml`. Preflight refuses to run when the inventory does not match
+the declared profile, so unsupported shapes fail before the first package is installed.
 
-### Schemes
+| `topology_profile` | Datacenters | PostgreSQL | Consul | RabbitMQ / Nomad | Promotion |
+|---|---|---|---|---|---|
+| `singlehost` | 1 (one host) | standalone | 1 server, loopback | single | — |
+| `multihost` | 1 | standalone | 1 server | single | — |
+| `failover` | 1 | one Patroni cluster | 1 cluster, 3+, odd | cluster | Patroni, within the DC |
+| `warm_standby` | 2+ | primary cluster + N standby clusters | isolated cluster per DC | per DC | external controller |
+| `stretch` | 3+ | one cluster across all DCs | one raft over three fault domains | per DC | Patroni, automatic |
 
-| Scheme | Nodes | Datacenters | Status |
-|---|---|---|---|
-| **Failover (1-DC)** | 3+ | 1 | Available — `inventories/failover.example` |
-| **Warm standby (2-DC)** | 6+ (3 per DC) | 2 | Available — `inventories/warm-standby-2dc.example` |
-| 3-DC stretch | 9+ | 3 | Phase 3 — not yet implemented |
+Host and datacenter counts are not part of the profile: `warm_standby` is N datacenters,
+not two. At three datacenters both `warm_standby` and `stretch` are available — the
+profile name is the choice, it is never inferred from the inventory.
 
-All schemes use the same `site.yml` playbook; the inventory's constructed groups
+`stretch` is active/passive: traffic is served by the datacenter holding the database
+leader. It widens Consul and Patroni raft timings automatically (`consul_raft_multiplier`,
+`patroni_ttl`, `patroni_retry_timeout`); set `patroni_synchronous_mode: true` if a
+cross-DC failover must not lose transactions, at the cost of a WAN round trip per commit.
+
+Two datacenters without replication between them is not a profile: that is two separate
+`failover` installations, and they belong in two inventories.
+
+All profiles use the same `site.yml` playbook; the inventory's constructed groups
 (`consul_server`, `patroni`, `nomad_server`, `rabbitmq`) determine cluster vs. single-node
 behavior automatically.
+
+Validate an inventory without touching any host:
+
+```bash
+ansible-playbook -i inventories/<name> playbooks/validate_topology.yml
+```
+
+Design rationale: `docs/superpowers/specs/2026-09-10-topology-profiles-design.md`.
 
 #### Failover (1-DC, single cluster)
 
@@ -74,9 +96,15 @@ full host/service mapping.
 
 #### Warm standby (2-DC, per-DC clusters)
 
-Each datacenter (`dc_a`, `dc_b`) runs its own independent Consul, Patroni, Nomad, and RabbitMQ
-cluster — cross-DC replication (Patroni standby cluster, RabbitMQ federation) is phase 3, not
-yet implemented.
+Each datacenter (`dc_a`, `dc_b`) runs its own isolated Consul, Patroni, Nomad, and RabbitMQ
+cluster. The datacenter named by `primary_datacenter` bootstraps the primary Patroni cluster;
+every other datacenter brings its Patroni up as a `standby_cluster` streaming from it, using
+the primary DC's node IPs directly (Patroni adds `target_session_attrs=read-write`, so it
+follows the real leader across a failover inside the primary DC). Replication is asynchronous
+and holds no replication slot: on extreme lag the standby is rebuilt.
+
+Promoting the standby datacenter is **not** done by this playbook — that belongs to Nomad jobs
+and the external controller. RabbitMQ is not federated across datacenters.
 
 `inventories/warm-standby-2dc.example` lays out a full HA topology, 12 nodes per DC:
 

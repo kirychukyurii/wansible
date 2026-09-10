@@ -210,10 +210,17 @@ _topology_db_scope: global    # stretch
 Формалізація виявляє чотири місця, де код не відповідає матриці. Це не задачі
 цієї спеки, але вони мають бути в плані:
 
-1. **`inventories/warm-standby-2dc.example` не є `warm_standby`.** У ньому немає
-   `standby_cluster` — це два незалежні primary, тобто «два DC без реплікації»,
-   яке матриця не підтримує. Або позначити приклад як незавершений, або не
-   називати його warm standby, поки фаза 3 не реалізована.
+1. **Документація відстала від коду щодо `standby_cluster`.** Реплікація між DC
+   **реалізована**: блок `standby_cluster` є в `roles/patroni/templates/patroni.yml.j2`
+   під `patroni_is_standby`, `patroni_standby_cluster_host` збирає кома-список IP
+   primary-DC, `roles/topology` виводить `patroni_is_standby_dc` і
+   `_topology_patroni_primary_hosts`, а `pg_hba` вже видає replication-рядки на
+   `groups['patroni']` усіх DC. Застарілі твердження, які треба виправити:
+   `README.md:100` («cross-DC replication ... is phase 3, not yet implemented»),
+   план `2026-06-17-patroni-warm-standby-2dc.md` (21 крок без жодної позначки
+   виконання) і memory-нотатка `project-phase3-standby-design`.
+   Реально нереалізованим з фази 3 лишається тільки guard проти відкоту promote
+   (див. нижче) і live promotion, яку свідомо не робимо.
 2. **Prepared queries створюються лише в одному DC.**
    `roles/consul/tasks/prepared_queries.yml` виконується з `run_once: true` і
    `delegate_to: groups['consul_server'][0]`. При ізольованих per-DC Consul
