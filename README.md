@@ -57,37 +57,37 @@ Every inventory declares what it is via `topology_profile` in
 `group_vars/all/main.yml`. Preflight refuses to run when the inventory does not match
 the declared profile, so unsupported shapes fail before the first package is installed.
 
-| `topology_profile` | Datacenters | PostgreSQL | Consul | RabbitMQ / Nomad | Promotion |
+| | `singlehost` | `multihost` | `failover` | `warm_standby` | `stretch` |
 |---|---|---|---|---|---|
-| `singlehost` | 1 (one host) | standalone | 1 server, loopback | single | — |
-| `multihost` | 1 | standalone | 1 server | single | — |
-| `failover` | 1 | one Patroni cluster | 1 cluster, 3+, odd | cluster | Patroni, within the DC |
-| `warm_standby` | 2+ | primary cluster + N standby clusters | isolated cluster per DC | per DC | external controller |
-| `stretch` | 3+ | one cluster across all DCs | one raft over three fault domains | per DC | Patroni, automatic |
+| **Datacenters** | 1 (single host) | 1 | 1 | 2+ | 3+ |
+| **PostgreSQL** | standalone | standalone | one Patroni cluster | primary + N standby clusters | one cluster across all DCs |
+| **Consul** | 1 server, loopback | 1 server | 1 cluster, 3+, odd | isolated cluster per DC | one raft, three fault domains |
+| **RabbitMQ / Nomad** | single | single | cluster | cluster per DC | cluster per DC |
+| **Survives** | nothing | loss of a non-DB host | loss of one node | loss of a datacenter | loss of a datacenter |
+| **Promotion** | — | — | Patroni, automatic | external controller, manual | Patroni, automatic |
+| **RPO** | last backup | last backup | ~0 (≤ 1 MiB WAL) | replication lag; unbounded once the link degrades | ~0 (≤ 1 MiB WAL), or 0 in sync mode |
+| **RTO** | hours | hours (DB) | ~30–45 s | minutes to hours | ~60–90 s |
 
-Host and datacenter counts are not part of the profile: `warm_standby` is N datacenters,
-not two. At three datacenters both `warm_standby` and `stretch` are available — the
-profile name is the choice, it is never inferred from the inventory.
+RPO and RTO are database-layer **targets with the shipped defaults**, not guarantees —
+they depend on your link, disk and backup schedule, and none have been measured on
+production hardware yet. What bounds them:
 
-### What each profile buys you
-
-Database-layer targets with the shipped defaults. These are targets, not guarantees:
-the actual numbers depend on your link, disk and backup schedule, and none of them
-have been measured on production hardware yet.
-
-| Profile | Survives | RPO | RTO | Bounded by |
-|---|---|---|---|---|
-| `singlehost` | nothing | last backup | hours | your backup schedule and restore speed |
-| `multihost` | loss of a non-DB host | last backup | hours (DB), minutes (other roles) | same; the DB is a single point of failure |
-| `failover` | loss of one node | ~0, at most 1 MiB of WAL | ~30–45 s, automatic | `patroni_ttl` 30 s + promotion; `maximum_lag_on_failover` 1 MiB |
-| `warm_standby` | loss of a whole datacenter | replication lag at the moment of loss — seconds when healthy, unbounded once the link degrades | minutes to hours, **manual** | how fast the external controller promotes and reroutes; no replication slot, so extreme lag means a rebuild |
-| `stretch` | loss of a whole datacenter | ~0, at most 1 MiB of WAL — or exactly 0 with `patroni_synchronous_mode: true` | ~60–90 s, automatic | `patroni_ttl` 60 s + promotion; sync mode trades a WAN round trip per commit for RPO 0 |
+- `failover` and `stretch` — `patroni_ttl` (30 s / 60 s) plus promotion time for RTO,
+  `maximum_lag_on_failover` (1 MiB) for RPO.
+- `warm_standby` — how fast the external controller promotes and reroutes. There is no
+  replication slot, so extreme lag means rebuilding the standby rather than catching up.
+- `singlehost` and `multihost` — your backup schedule and restore speed. The database is
+  a single point of failure in both.
 
 Two caveats:
 
 - RTO is the **database** only — application, DNS and SIP routing add their own.
 - Only `failover` and `stretch` promote themselves. `warm_standby` promotion is always
   a decision, carried out by Nomad jobs and the external controller, not by this playbook.
+
+Host and datacenter counts are not part of the profile: `warm_standby` is N datacenters,
+not two. At three datacenters both `warm_standby` and `stretch` are available — the
+profile name is the choice, it is never inferred from the inventory.
 
 `stretch` is active/passive: traffic is served by the datacenter holding the database
 leader. It widens Consul and Patroni raft timings automatically (`consul_raft_multiplier`,
