@@ -25,6 +25,10 @@
   - Hosts running `postgres` or `freeswitch` **must** be amd64 (packages are amd64-only)
 - **Access:** SSH key or password, sudo/become rights on target hosts
 - **Credentials:** Webitel S3 APT repository keys (access + secret), SignalWire Personal Access Token for FreeSWITCH
+- **Internet access:** direct, or through an HTTP proxy — set `http_proxy` / `https_proxy` in
+  `group_vars/all`. It applies to the install phase only (apt, GPG key downloads,
+  apt-transport-s3), and `no_proxy` is computed for you from localhost, `.consul` and every
+  cluster host IP, so nodes keep talking to each other directly
 
 ## Quickstart
 
