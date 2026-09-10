@@ -9,13 +9,20 @@ haproxy_pg_ro_port: 6433
 
 haproxy_bind_addr: "0.0.0.0"
 
+# Two uses: gating the listeners, and sizing the RO server-template slot count.
+# Under 'global' scope replica.<scope>.service.consul returns replicas from every
+# datacenter, so a DC-filtered count would leave most of them without a slot.
+# The RW listener needs no change: it resolves primary.<scope>.service.consul,
+# which points at the real leader wherever it lives.
 haproxy_backends: >-
-  {{ (groups['patroni'] | default([])
-      | map('extract', hostvars)
-      | selectattr('datacenter', 'defined')
-      | selectattr('datacenter', '==', datacenter)
-      | map(attribute='inventory_hostname') | list)
-     or (groups['patroni'] | default([])) }}
+  {{ (groups['patroni'] | default([]))
+     if (_topology_db_scope | default('dc')) == 'global'
+     else ((groups['patroni'] | default([])
+            | map('extract', hostvars)
+            | selectattr('datacenter', 'defined')
+            | selectattr('datacenter', '==', datacenter)
+            | map(attribute='inventory_hostname') | list)
+           or (groups['patroni'] | default([]))) }}
 
 # Also sets the server-template slot count and gates the AMQP listener.
 haproxy_rabbitmq_backends: >-

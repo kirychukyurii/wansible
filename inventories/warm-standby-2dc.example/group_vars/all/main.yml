@@ -1,4 +1,7 @@
 ---
+# Supported deployment shape. See README > Deployment profiles.
+topology_profile: warm_standby
+
 # Same across all hosts in both DCs.
 ansible_user: webitel
 ansible_password: "{{ vault_ansible_password }}"
@@ -67,10 +70,6 @@ haproxy_amqp_port: 5673
 # roles use 'datacenter' per-host to build per-DC cluster member lists.
 # dc_b bootstraps its Patroni as a standby_cluster streaming from this DC.
 primary_datacenter: dc_a
-consul_allow_multidc: true
-patroni_allow_multidc: true
-nomad_allow_multidc: true
-rabbitmq_allow_stretch: true
 
 # DNS upstream forwarding (dnsmasq) is set per-DC in group_vars/dc_a.yml and
 # group_vars/dc_b.yml. Required when consul_dns_forward is on, otherwise the

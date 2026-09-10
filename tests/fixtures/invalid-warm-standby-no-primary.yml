@@ -1,0 +1,36 @@
+---
+all:
+  vars:
+    topology_profile: warm_standby
+    dns_upstream_servers: [10.0.0.1]
+  children:
+    dc_a:
+      vars:
+        datacenter: dc_a
+      hosts:
+        a1: {}
+        a2: {}
+        a3: {}
+    dc_b:
+      vars:
+        datacenter: dc_b
+      hosts:
+        b1: {}
+        b2: {}
+        b3: {}
+    patroni:
+      hosts:
+        a1: {}
+        a2: {}
+        a3: {}
+        b1: {}
+        b2: {}
+        b3: {}
+    consul_server:
+      hosts:
+        a1: {}
+        a2: {}
+        a3: {}
+        b1: {}
+        b2: {}
+        b3: {}

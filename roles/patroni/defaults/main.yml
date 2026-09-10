@@ -1,15 +1,28 @@
 ---
 patroni_major: "{{ pg_major }}"
 patroni_scope: "{{ webitel_patroni_scope }}"
+# Under the stretch profile the cluster IS one across datacenters, so the peer
+# list must not be filtered by the local DC.
 patroni_cluster_hosts: >-
-  {{ groups['patroni'] | default([])
-     | map('extract', hostvars)
-     | selectattr('datacenter', 'defined')
-     | selectattr('datacenter', '==', datacenter)
-     | map(attribute='inventory_hostname') | list
-     or groups['patroni'] | default([]) }}
+  {{ (groups['patroni'] | default([]))
+     if (_topology_db_scope | default('dc')) == 'global'
+     else ((groups['patroni'] | default([])
+            | map('extract', hostvars)
+            | selectattr('datacenter', 'defined')
+            | selectattr('datacenter', '==', datacenter)
+            | map(attribute='inventory_hostname') | list)
+           or (groups['patroni'] | default([]))) }}
 patroni_node_ip: "{{ ansible_facts.default_ipv4.address }}"
 patroni_failover_priority: "{{ hostvars[inventory_hostname].patroni_priority | default(1) }}"
+# Patroni DCS timings, widened under 'global' scope for the same reason as
+# consul_raft_multiplier. ttl must stay above loop_wait + 2 * retry_timeout.
+patroni_loop_wait: 10
+patroni_ttl: "{{ 60 if (_topology_db_scope | default('dc')) == 'global' else 30 }}"
+patroni_retry_timeout: "{{ 20 if (_topology_db_scope | default('dc')) == 'global' else 10 }}"
+# Off by default: synchronous replication across sites costs a WAN round trip on
+# every commit. Turning it on is the user's RPO decision - without it a failover
+# to another datacenter loses the transactions that had not shipped yet.
+patroni_synchronous_mode: false
 patroni_consul_host: "127.0.0.1:8500"
 patroni_tls_enabled: "{{ consul_pki_enabled | default(false) }}"
 patroni_ssl_dir: "{{ pki_remote_dir }}"

@@ -47,6 +47,19 @@ jobs:
       - name: ansible-lint
         run: ansible-lint
 
+      - name: Topology validation tests
+        run: ./tests/run.sh
+
+      - name: Validate example inventories against their profiles
+        run: |
+          for inv in singlehost multihost failover warm-standby-2dc; do
+            d="inventories/${inv}.example/group_vars/all"
+            cp "$d/vault.yml.example" "$d/vault.yml"
+          done
+          for inv in singlehost multihost failover warm-standby-2dc; do
+            ansible-playbook -i "inventories/${inv}.example" playbooks/validate_topology.yml
+          done
+
       - name: Syntax check (singlehost)
         run: ansible-playbook --syntax-check -i inventories/singlehost.example site.yml
 

@@ -1,4 +1,7 @@
 ---
+# Supported deployment shape. See README > Deployment profiles.
+topology_profile: multihost
+
 datacenter: dc1
 
 # Required when consul_dns_forward is on: dnsmasq becomes the host's resolver,

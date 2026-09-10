@@ -1,4 +1,7 @@
 ---
+# Supported deployment shape. See README > Deployment profiles.
+topology_profile: failover
+
 datacenter: dc1
 
 webitel_version: "26.4"

@@ -18,6 +18,10 @@
     webitel_release_component: "{{ webitel_version }}-releases"
     patroni_is_standby_dc: >-
       {{ (primary_datacenter is defined) and (datacenter != primary_datacenter) }}
+    # 'global' only under the stretch profile: one Consul raft and one Patroni
+    # cluster across all datacenters. Consumed by the consul, patroni and
+    # haproxy roles, which otherwise filter their peer lists by local DC.
+    _topology_db_scope: "{{ topology_profiles[topology_profile].dcs_scope }}"
     # Resolved here, not only in preflight, so standalone playbooks
     # (database.yml) work on their own.
     pg_major: "{{ pg_major | default('15' if ansible_facts.distribution_major_version == '12' else '18') }}"

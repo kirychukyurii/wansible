@@ -1,5 +1,10 @@
 # {{ ansible_managed }}
 datacenter = "{{ consul_datacenter }}"
+
+performance {
+  raft_multiplier = {{ consul_raft_multiplier }}
+}
+
 data_dir   = "{{ consul_data_dir }}"
 log_level  = "{{ consul_log_level }}"
 node_name  = "{{ ansible_hostname }}"

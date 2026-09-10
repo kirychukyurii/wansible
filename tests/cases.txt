@@ -1,0 +1,15 @@
+# fixture|expected_rc|expected message fragment
+valid-failover|0|
+invalid-no-profile|2|topology_profile is not set
+invalid-unknown-profile|2|Unknown topology_profile 'hyperscale'
+valid-singlehost|0|
+invalid-singlehost-two-hosts|2|allows at most 1 host
+invalid-warm-standby-1dc|2|requires at least 2 datacenters
+invalid-failover-with-postgres|2|expects a Patroni cluster
+invalid-warm-standby-no-primary|2|requires primary_datacenter
+valid-warm-standby|0|
+invalid-failover-multidc|2|at most 1; inventory has 2
+invalid-even-quorum|2|must be odd
+invalid-patroni-single-node|2|needs at least 2 nodes
+valid-stretch|0|
+invalid-stretch-2dc|2|requires at least 3 datacenters

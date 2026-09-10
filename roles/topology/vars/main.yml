@@ -1,0 +1,50 @@
+---
+# Single source of truth for what each deployment profile is allowed to look
+# like. Lives in vars/ (not defaults/) because it is a constant contract, not a
+# tunable: overriding it in group_vars would defeat the gate.
+#
+# max_datacenters / max_hosts: 0 means no upper bound.
+# db:        standalone (plain postgres) | cluster (one patroni cluster) |
+#            standby   (primary cluster + N standby clusters)
+# dcs_scope: dc (one Consul cluster per datacenter) | global (one across all)
+topology_profiles:
+  singlehost:
+    implemented: true
+    min_datacenters: 1
+    max_datacenters: 1
+    max_hosts: 1
+    db: standalone
+    dcs_scope: dc
+    requires_primary_datacenter: false
+  multihost:
+    implemented: true
+    min_datacenters: 1
+    max_datacenters: 1
+    max_hosts: 0
+    db: standalone
+    dcs_scope: dc
+    requires_primary_datacenter: false
+  failover:
+    implemented: true
+    min_datacenters: 1
+    max_datacenters: 1
+    max_hosts: 0
+    db: cluster
+    dcs_scope: dc
+    requires_primary_datacenter: false
+  warm_standby:
+    implemented: true
+    min_datacenters: 2
+    max_datacenters: 0
+    max_hosts: 0
+    db: standby
+    dcs_scope: dc
+    requires_primary_datacenter: true
+  stretch:
+    implemented: true
+    min_datacenters: 3
+    max_datacenters: 0
+    max_hosts: 0
+    db: cluster
+    dcs_scope: global
+    requires_primary_datacenter: false
