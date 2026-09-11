@@ -202,23 +202,35 @@ rabbitmqctl cluster_status
 
 Every role exposes fine-grained tags so you can limit execution to a specific phase:
 
-| Tag pattern | Effect |
+| Tag | Effect |
 |---|---|
 | `base_install`, `base_repo`, `base_configure` | Base system role phases |
-| `consul_install`, `consul_configure` | Consul role phases |
-| `postgres_install`, `postgres_configure`, `postgres_database` | PostgreSQL role phases |
-| `rabbitmq_install`, `rabbitmq_configure` | RabbitMQ role phases |
+| `pki_ca`, `pki_node` | CA generation / per-node certificates |
+| `consul_install`, `consul_configure`, `consul_dns`, `consul_queries` | Consul role phases, dnsmasq forwarding, prepared queries |
+| `nomad_install`, `nomad_configure` | Nomad role phases |
+| `haproxy_install`, `haproxy_configure` | HAProxy role phases |
+| `postgres_install`, `postgres_configure`, `postgres_database` | Standalone PostgreSQL role phases |
+| `patroni_install`, `patroni_configure`, `patroni_bootstrap` | Patroni role phases |
+| `rabbitmq_install`, `rabbitmq_configure`, `rabbitmq_cluster` | RabbitMQ role phases |
 | `freeswitch_install`, `freeswitch_configure` | FreeSWITCH role phases |
 | `rtpengine_install`, `rtpengine_configure` | RTPEngine role phases |
 | `opensips_install`, `opensips_configure`, `opensips_fail2ban` | OpenSIPS role phases |
-| `nginx_install`, `nginx_configure` | NGINX role phases |
+| `nginx_install`, `nginx_configure`, `nginx_tls` | NGINX role phases |
 | `grafana_install`, `grafana_configure`, `grafana_dashboards` | Grafana role phases |
-| `webitel_*_install`, `webitel_*_configure` | Per-service Webitel role phases |
 
-Example — re-run only configuration for nginx and webitel_core:
+Webitel services are tagged differently: one tag per service
+(`webitel_core`, `webitel_engine`, `webitel_call_center`, `webitel_flow_manager`,
+`webitel_storage`, `webitel_messages`, `webitel_logger`, `webitel_cases`,
+`webitel_media_exporter`, `webitel_storage_key`) selects *which* services run,
+and the shared `install` / `configure` tags select *which phase*. Combine them.
 
 ```bash
+# Re-run only NGINX configuration
 ansible-playbook -i inventories/production site.yml \
-  --tags nginx_configure,webitel_core_configure --ask-vault-pass
+  --tags nginx_configure --ask-vault-pass
+
+# Re-render env files for webitel_core only, without touching packages
+ansible-playbook -i inventories/production site.yml \
+  --tags webitel_core --skip-tags install --ask-vault-pass
 ```
 

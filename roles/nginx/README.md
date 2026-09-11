@@ -1,12 +1,12 @@
 # nginx
 
-Installs NGINX as the Webitel reverse proxy. Downloads the upstream Webitel NGINX configuration on first run (`force: false`), then patches upstream addresses to match the actual inventory topology. Optionally invokes the `certbot` role when `nginx_letsencrypt` is enabled.
+Installs NGINX as the Webitel reverse proxy. Downloads the upstream Webitel NGINX configuration on first run (`force: false`), then patches upstream addresses to match the actual inventory topology. Optionally invokes the `certbot` role when `nginx_tls_mode` is `letsencrypt`.
 
 Note: the NGINX config files are owned by the Webitel engineering team and fetched from wherever `nginx_config_url`/`nginx_site_url` point (see `defaults/main.yml` for the current default). The role does not manage the full template; instead it applies idempotent `replace` tasks for upstream addresses.
 
 See `defaults/main.yml` for configurable variables.
 
-The `nginx_letsencrypt`, `nginx_site_name`, and `nginx_mail_address` variables are consumed by the `certbot` role (included conditionally from `playbooks/web.yml`).
+The `nginx_site_name` and `nginx_mail_address` variables are consumed by the `certbot` role (included conditionally from `playbooks/web.yml`).
 
 ## Consul discovery (multi-host)
 
@@ -44,7 +44,6 @@ For `provided` / `self_signed` the upstream `default` site ships its TLS directi
 
 The managed regions are re-rendered on change, so updating `nginx_tls_cert_path` or `nginx_site_name` reconfigures TLS idempotently. `letsencrypt` mode is untouched — `certbot --nginx --redirect` enables TLS itself.
 
-The default is derived from the legacy `nginx_letsencrypt` flag: `true` → `letsencrypt`,
-`false` → `self_signed`. Set `nginx_tls_mode` explicitly to override.
+The default is `self_signed`. Set `nginx_tls_mode` explicitly to pick another mode.
 
 See `defaults/main.yml` for the TLS variables (`nginx_tls_*`).

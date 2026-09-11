@@ -1,6 +1,6 @@
 # certbot
 
-Obtains and auto-renews a Let's Encrypt TLS certificate for the NGINX vhost. Invoked conditionally from `playbooks/web.yml` when `nginx_letsencrypt: true`.
+Obtains and auto-renews a Let's Encrypt TLS certificate for the NGINX vhost. Invoked conditionally from `playbooks/web.yml` when `nginx_tls_mode: letsencrypt`.
 
 This role has no `defaults/main.yml`; all variables are consumed from the shared inventory scope.
 
