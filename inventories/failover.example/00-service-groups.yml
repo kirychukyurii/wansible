@@ -1,4 +1,7 @@
 ---
+# Declares every group in playbooks/vars/known_services.yml, so `groups['<svc>']`
+# resolves to an empty list instead of being undefined when no host runs that
+# service. Hosts are mapped into these groups by 99-constructed.yml.
 all:
   children:
     consul_server: {}
@@ -8,12 +11,12 @@ all:
     patroni: {}
     postgres: {}
     rabbitmq: {}
+    haproxy: {}
     freeswitch: {}
     rtpengine: {}
     opensips: {}
     nginx: {}
     grafana: {}
-    haproxy: {}
     webitel_core: {}
     webitel_engine: {}
     webitel_call_center: {}
