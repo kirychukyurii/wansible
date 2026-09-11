@@ -2,14 +2,19 @@
 - name: Resolve cluster topology facts
   ansible.builtin.import_playbook: topology.yml
 
+- name: Webitel frontend
+  hosts: webitel_frontend
+  become: true
+  any_errors_fatal: "{{ fail_fast | default(true) }}"
+  environment: "{{ proxy_env | default({}) }}"
+  roles: [webitel_frontend]
+
 - name: Web tier
   hosts: nginx
   become: true
   any_errors_fatal: "{{ fail_fast | default(true) }}"
   environment: "{{ proxy_env | default({}) }}"
-  roles:
-    - webitel_frontend
-    - nginx
+  roles: [nginx]
   tasks:
     - name: Web | Include certbot
       ansible.builtin.include_role:

@@ -18,7 +18,9 @@ all:
         - webitel_messages
         - webitel_logger
         - webitel_cases
+        - webitel_media_exporter
         - nginx
+        - webitel_frontend
         - grafana
         - haproxy
     ha2:
