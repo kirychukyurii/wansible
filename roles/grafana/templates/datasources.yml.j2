@@ -6,33 +6,36 @@ datasources:
     uid: "webitel_pg_primary"
     type: "postgres"
     url: "{{ webitel_pg_host }}:{{ webitel_pg_port }}"
-    database: "{{ webitel_pg_db }}"
     user: "{{ grafana_datasource_user }}"
     secureJsonData:
       password: "{{ grafana_datasource_password }}"
+    
     jsonData:
+      database: "{{ webitel_pg_db }}"
       sslmode: "disable"
       maxOpenConns: 0
       maxIdleConns: 2
       connMaxLifetime: 14400
-      postgresVersion: 1400
+      postgresVersion: 1800
       timescaledb: true
     isDefault: true
 {% if webitel_pg_haproxy | default(false) | bool %}
+  
   - name: "PostgreSQL Replica"
     uid: "webitel_pg_replica"
     type: "postgres"
     url: "{{ webitel_pg_host }}:{{ haproxy_pg_ro_port }}"
-    database: "{{ webitel_pg_db }}"
     user: "{{ grafana_datasource_user }}"
     secureJsonData:
       password: "{{ grafana_datasource_password }}"
+    
     jsonData:
+      database: "{{ webitel_pg_db }}"
       sslmode: "disable"
       maxOpenConns: 0
       maxIdleConns: 2
       connMaxLifetime: 14400
-      postgresVersion: 1400
+      postgresVersion: 1800
       timescaledb: true
     isDefault: false
 {% endif %}
