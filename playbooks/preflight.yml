@@ -48,10 +48,6 @@
           Webitel 26.6 supports Debian 12 (PostgreSQL 15) and Debian 13 (PostgreSQL 18).
         quiet: true
 
-    - name: Preflight | Resolve PostgreSQL major (override via pg_major, else derive from Debian)
-      ansible.builtin.set_fact:
-        pg_major: "{{ pg_major | default('15' if ansible_facts.distribution_major_version == '12' else '18') }}"
-
     - name: Preflight | Require amd64 on PostgreSQL hosts (webitel extension is amd64-only)
       ansible.builtin.assert:
         that: ansible_facts.architecture == 'x86_64'

@@ -27,8 +27,9 @@
     # cluster across all datacenters. Consumed by the consul, patroni and
     # haproxy roles, which otherwise filter their peer lists by local DC.
     _topology_db_scope: "{{ topology_profiles[topology_profile].dcs_scope }}"
-    # Resolved here, not only in preflight, so standalone playbooks
-    # (database.yml) work on their own.
+    # Single source for the PostgreSQL major: every playbook that touches the
+    # database imports topology.yml first, so standalone runs resolve it too.
+    # Override by setting pg_major in group_vars.
     pg_major: "{{ pg_major | default('15' if ansible_facts.distribution_major_version == '12' else '18') }}"
 
 - name: Resolve consul PKI flag

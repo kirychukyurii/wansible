@@ -12,7 +12,7 @@ The role has no `tasks/main.yml` — it's invoked only via
 
 See `defaults/main.yml` for the variable interface (login_host/login_user/login_password: empty means peer auth, non-empty means TCP — see the comment there).
 
-`pg_major` (15\|18) is expected to come from preflight `set_fact`.
+`pg_major` (15\|18) is expected to come from the `topology` role's `set_fact`.
 
 ## Usage
 
