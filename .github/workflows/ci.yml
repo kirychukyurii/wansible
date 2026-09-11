@@ -1,0 +1,109 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  ansible-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: ansible-lint github-check
+        uses: reviewdog/action-ansiblelint@v1
+        with:
+          github_token: ${{ secrets.github_token }}
+          reporter: github-check
+          level: warning
+          ansiblelint_flags: "./*"
+
+  yamllint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tooling
+        run: pip install yamllint
+
+      - name: yamllint
+        run: yamllint .
+
+  test:
+    name: topology tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tooling
+        run: pip install ansible-core
+
+      - name: Cache Ansible collections
+        uses: actions/cache@v4
+        with:
+          path: ~/.ansible/collections
+          key: ansible-collections-${{ hashFiles('requirements.yml') }}
+
+      - name: Install collections
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: Topology validation tests
+        run: ./tests/run.sh
+
+  inventory:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        inventory:
+          - singlehost
+          - multihost
+          - failover
+          - warm-standby-2dc
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tooling
+        run: pip install ansible-core
+
+      - name: Cache Ansible collections
+        uses: actions/cache@v4
+        with:
+          path: ~/.ansible/collections
+          key: ansible-collections-${{ hashFiles('requirements.yml') }}
+
+      - name: Install collections
+        run: ansible-galaxy collection install -r requirements.yml
+
+      - name: Unseal example vault
+        run: |
+          d="inventories/${{ matrix.inventory }}.example/group_vars/all"
+          cp "$d/vault.yml.example" "$d/vault.yml"
+
+      - name: Validate topology
+        run: >-
+          ansible-playbook -i inventories/${{ matrix.inventory }}.example
+          playbooks/validate_topology.yml
+
+      - name: Syntax check
+        run: >-
+          ansible-playbook --syntax-check
+          -i inventories/${{ matrix.inventory }}.example site.yml
