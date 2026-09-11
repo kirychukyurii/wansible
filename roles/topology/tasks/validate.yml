@@ -1,0 +1,257 @@
+---
+# Inventory-only checks: every assert reads groups and static hostvars, never
+# facts, so this runs against any inventory without SSH. Included on its own
+# (tasks_from: validate) — it derives nothing and sets no topology facts.
+#
+# The contract it checks against is vars/main.yml (topology_profiles).
+- name: Topology profile must be declared
+  ansible.builtin.assert:
+    that:
+      - topology_profile is defined
+    fail_msg: >-
+      topology_profile is not set. Declare it in group_vars/all/main.yml.
+      Supported values: {{ topology_profiles.keys() | list | join(', ') }}.
+    quiet: true
+
+- name: Topology profile must be a known profile
+  ansible.builtin.assert:
+    that:
+      - topology_profile in topology_profiles
+    fail_msg: >-
+      Unknown topology_profile '{{ topology_profile }}'.
+      Supported values: {{ topology_profiles.keys() | list | join(', ') }}.
+    quiet: true
+
+- name: Profile must be implemented
+  ansible.builtin.assert:
+    that:
+      - topology_profiles[topology_profile].implemented | bool
+    fail_msg: >-
+      topology_profile '{{ topology_profile }}' is declared but not yet
+      implemented in this version of the playbook.
+    quiet: true
+
+- name: Resolve the datacenter list
+  ansible.builtin.set_fact:
+    _topology_datacenters: >-
+      {{ groups['all'] | default([])
+         | map('extract', hostvars)
+         | selectattr('datacenter', 'defined')
+         | map(attribute='datacenter')
+         | unique | sort | list }}
+
+- name: Every host must declare a datacenter
+  ansible.builtin.assert:
+    that:
+      - (groups['all'] | default([])) | length == 0
+        or (_topology_datacenters | length) > 0
+    fail_msg: >-
+      No host declares a 'datacenter'. Set it in the inventory, per-DC group
+      vars (see inventories/warm-standby-2dc.example/01-hosts.yml).
+    quiet: true
+
+- name: Datacenter count must fit the profile
+  ansible.builtin.assert:
+    that:
+      - (_topology_datacenters | length) >= topology_profiles[topology_profile].min_datacenters
+      - topology_profiles[topology_profile].max_datacenters == 0
+        or (_topology_datacenters | length) <= topology_profiles[topology_profile].max_datacenters
+    fail_msg: >-
+      Profile '{{ topology_profile }}' requires at least
+      {{ topology_profiles[topology_profile].min_datacenters }} datacenters
+      and at most
+      {{ topology_profiles[topology_profile].max_datacenters | ternary(topology_profiles[topology_profile].max_datacenters, 'unlimited') }};
+      inventory has {{ _topology_datacenters | length }}
+      ({{ _topology_datacenters | join(', ') }}).
+    quiet: true
+
+- name: Host count must fit the profile
+  ansible.builtin.assert:
+    that:
+      - topology_profiles[topology_profile].max_hosts == 0
+        or (groups['all'] | default([])) | length <= topology_profiles[topology_profile].max_hosts
+    fail_msg: >-
+      Profile '{{ topology_profile }}' allows at most
+      {{ topology_profiles[topology_profile].max_hosts }} host(s), inventory
+      has {{ (groups['all'] | default([])) | length }}.
+    quiet: true
+
+- name: Standalone profiles must not define a Patroni cluster
+  ansible.builtin.assert:
+    that:
+      - (groups['patroni'] | default([])) | length == 0
+    fail_msg: >-
+      Profile '{{ topology_profile }}' expects standalone PostgreSQL, but the
+      inventory has {{ (groups['patroni'] | default([])) | length }} patroni
+      host(s). Use profile 'failover' (1 DC) or 'warm_standby' (2+ DC).
+    quiet: true
+  when: topology_profiles[topology_profile].db == 'standalone'
+
+- name: Clustered profiles must define a Patroni cluster
+  ansible.builtin.assert:
+    that:
+      - (groups['patroni'] | default([])) | length > 0
+      - (groups['postgres'] | default([])) | length == 0
+    fail_msg: >-
+      Profile '{{ topology_profile }}' expects a Patroni cluster, but the
+      inventory has {{ (groups['patroni'] | default([])) | length }} patroni
+      host(s) and {{ (groups['postgres'] | default([])) | length }} standalone
+      postgres host(s). Use profile 'multihost' for standalone PostgreSQL.
+    quiet: true
+  when: topology_profiles[topology_profile].db in ['cluster', 'standby']
+
+- name: Standby profiles require a primary datacenter
+  ansible.builtin.assert:
+    that:
+      - primary_datacenter is defined
+      - primary_datacenter in _topology_datacenters
+    fail_msg: >-
+      Profile '{{ topology_profile }}' requires primary_datacenter, set to one
+      of {{ _topology_datacenters | join(', ') }}. Without it every datacenter
+      would bootstrap its own primary and the data would diverge.
+    quiet: true
+  when: topology_profiles[topology_profile].requires_primary_datacenter | bool
+
+- name: Patroni cluster needs at least two nodes
+  ansible.builtin.assert:
+    that:
+      - (item.1 | length) >= 2
+    fail_msg: >-
+      Patroni cluster in '{{ item.0 }}' has {{ item.1 | length }} node(s); it
+      needs at least 2 nodes to fail over at all (3 recommended).
+    quiet: true
+  loop: >-
+    {{ (groups['patroni'] | default([])
+        | map('extract', hostvars)
+        | groupby('datacenter'))
+       if topology_profiles[topology_profile].dcs_scope == 'dc'
+       else [['all datacenters', groups['patroni'] | default([])]] }}
+  loop_control:
+    label: "{{ item.0 }}"
+  when: topology_profiles[topology_profile].db in ['cluster', 'standby']
+
+- name: Stretch DCS quorum must sit in exactly three fault domains
+  ansible.builtin.assert:
+    that: >-
+      (groups['consul_server'] | default([])
+       | map('extract', hostvars)
+       | map(attribute='datacenter')
+       | unique | list | length) == 3
+    fail_msg: >-
+      Profile 'stretch' puts consul_server nodes in exactly three fault
+      domains, found
+      {{ groups['consul_server'] | default([]) | map('extract', hostvars) | map(attribute='datacenter') | unique | list | length }}.
+      Additional datacenters may host consul agents and patroni replicas, but
+      no DCS servers.
+    quiet: true
+  when: topology_profiles[topology_profile].dcs_scope == 'global'
+
+# No assert for "RabbitMQ / nomad_server must not span datacenters": the
+# inventory cannot violate it. Both roles build their member lists from the
+# local datacenter only (roles/rabbitmq/defaults/main.yml,
+# roles/nomad/defaults/main.yml), so a group spanning datacenters simply
+# yields one independent cluster per datacenter, which is what
+# warm_standby and stretch both want.
+- name: DCS quorum must be odd and at least three
+  ansible.builtin.assert:
+    that:
+      - (item.1 | length) >= 3
+      - (item.1 | length) % 2 == 1
+    fail_msg: >-
+      consul_server count in '{{ item.0 }}' is {{ item.1 | length }}; it must
+      be odd and at least 3. An even quorum tolerates no more failures than
+      the odd size below it.
+    quiet: true
+  loop: >-
+    {{ (groups['consul_server'] | default([])
+        | map('extract', hostvars)
+        | groupby('datacenter'))
+       if topology_profiles[topology_profile].dcs_scope == 'dc'
+       else [['all datacenters', groups['consul_server'] | default([])]] }}
+  loop_control:
+    label: "{{ item.0 }}"
+  when: topology_profiles[topology_profile].db in ['cluster', 'standby']
+
+- name: Single rtpengine/opensips/postgres per datacenter (phase 1)
+  ansible.builtin.assert:
+    that: >-
+      groups[item] | default([])
+      | map('extract', hostvars)
+      | groupby('datacenter')
+      | map(attribute='1')
+      | map('length')
+      | select('gt', 1)
+      | list | length == 0
+    fail_msg: "Phase 1 supports exactly one '{{ item }}' host per datacenter"
+    quiet: true
+  loop: [rtpengine, opensips, postgres]
+
+- name: Host cannot be in both 'postgres' and 'patroni' (standalone vs HA — Patroni manages PostgreSQL)
+  ansible.builtin.assert:
+    that: >-
+      (groups['postgres'] | default([]))
+      | intersect(groups['patroni'] | default([]))
+      | length == 0
+    fail_msg: >-
+      Hosts {{ (groups['postgres'] | default([])) | intersect(groups['patroni'] | default([])) | join(', ') }}
+      are in both 'postgres' and 'patroni'. Patroni manages PostgreSQL itself —
+      drop the 'postgres' service from Patroni nodes (use 'postgres' only for
+      standalone non-HA PostgreSQL).
+    quiet: true
+
+- name: Each datacenter with hosts must have at least one consul_server
+  ansible.builtin.assert:
+    that: >-
+      (groups['all']
+       | map('extract', hostvars)
+       | map(attribute='datacenter')
+       | unique | list)
+      | difference(
+          groups['consul_server'] | default([])
+          | map('extract', hostvars)
+          | map(attribute='datacenter')
+          | unique | list)
+      | length == 0
+    fail_msg: >-
+      Every datacenter must have at least one consul_server.
+      Missing consul_server in some datacenter(s).
+    quiet: true
+
+- name: Every host must set dns_upstream_servers (HA enables DNS forwarding which overrides /etc/resolv.conf)
+  ansible.builtin.assert:
+    that:
+      - hostvars[item].dns_upstream_servers | default([]) | length > 0
+    fail_msg: >-
+      Host '{{ item }}' has no dns_upstream_servers. In multi-host (HA) mode,
+      consul_dns_forward is enabled and systemd-resolved takes over
+      /etc/resolv.conf — without upstream DNS the host can only resolve .consul.
+      Set dns_upstream_servers (per-DC in group_vars/<dc>.yml).
+    quiet: true
+  loop: "{{ groups['all'] | default([]) }}"
+  loop_control:
+    label: "{{ item }}"
+  # single_node disables consul_dns_forward, so recursors aren't needed
+  when: (groups['all'] | default([])) | length > 1
+
+- name: PG/AMQP consumers must have local HAProxy (sidecar)
+  ansible.builtin.assert:
+    that:
+      - (_pg_amqp_consumers | difference(groups['haproxy'] | default([]))) | length == 0
+    fail_msg: >-
+      HAProxy sidecar is active, but these hosts consume PG/AMQP without a local
+      haproxy: {{ _pg_amqp_consumers | difference(groups['haproxy'] | default([])) | join(', ') }}.
+      Add 'haproxy' to the services of these hosts.
+    quiet: true
+  vars:
+    _pg_amqp_consumers: >-
+      {{ ((groups['webitel_core'] | default([]))
+          + (groups['webitel_engine'] | default([]))
+          + (groups['webitel_call_center'] | default([]))
+          + (groups['webitel_flow_manager'] | default([]))
+          + (groups['webitel_storage'] | default([]))
+          + (groups['webitel_messages'] | default([]))
+          + (groups['webitel_logger'] | default([]))
+          + (groups['webitel_cases'] | default([]))
+          + (groups['webitel_media_exporter'] | default([]))) | unique }}
+  when:
+    - (groups['haproxy'] | default([])) | length > 0
