@@ -1,8 +1,9 @@
 ---
 plugin: ansible.builtin.constructed
 strict: true
+# One group per service name. Datacenters are not keyed into groups: nothing
+# consumes a dc_<name> group. Per-DC variables go in explicit inventory groups
+# instead (see inventories/warm-standby-2dc.example/01-hosts.yml).
 keyed_groups:
   - key: services
     separator: ""
-  - key: datacenter | default('dc1')
-    prefix: dc

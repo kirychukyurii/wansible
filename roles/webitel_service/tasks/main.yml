@@ -11,11 +11,6 @@
     install_recommends: false
   tags: [install]
 
-- name: Service-specific tasks
-  ansible.builtin.include_tasks: "{{ role_path }}/tasks/services/{{ webitel_service_name }}.yml"
-  when: (role_path ~ '/tasks/services/' ~ webitel_service_name ~ '.yml') is exists
-  tags: [install, configure]
-
 # Files ship with the package (.env*.example -> /etc/default/webitel-*); a
 # service with no env_files (e.g. a future nomad-only one) skips this step.
 - name: Configure env files
